@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Demo video player</title>
+<style>
+  *{box-sizing:border-box}body{margin:0;background:#000;color:#fff;font:12px Arial;height:100dvh;display:flex;flex-direction:column}video{width:100%;flex:1;min-height:0;object-fit:contain}p{position:absolute;inset:40% 10%;text-align:center;background:#211333;padding:16px}p[hidden]{display:none}
+</style>
+<style>
+  #toggle{position:absolute;inset:0 0 56px;display:grid;place-items:center;border:0;background:transparent;color:white;cursor:pointer}#toggle span{display:grid;place-items:center;width:clamp(64px,10vw,100px);aspect-ratio:1;border-radius:50%;background:#100b1bb3;transition:opacity .15s;transform:translateY(28px)}#toggle svg{width:45%;height:45%;fill:currentColor}#toggle[data-playing=true] span{opacity:0}#toggle[data-playing=true].feedback span,#toggle:focus-visible span{opacity:1}#toggle:hover span{color:#ed145b}#toggle:focus-visible{outline:2px solid #ed145b;outline-offset:-4px}#toggle[hidden]{display:none}#pause-icon{display:none}#toggle[data-playing=true] #play-icon{display:none}#toggle[data-playing=true] #pause-icon{display:block}#error{z-index:2}@media(prefers-reduced-motion:reduce){#toggle span{transition:none}}
+</style>
+<video id="video" src="/demo/sample.mp4" controls controlslist="noplaybackrate" playsinline preload="metadata" poster="/thumbnails/scene-1.svg"></video>
+<button id="toggle" aria-label="Play video" data-playing="false"><span><svg id="play-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3v18l16-9z"/></svg><svg id="pause-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h5v18H5zm9 0h5v18h-5z"/></svg></span></button>
+<p id="error" hidden>Sample video could not be loaded. Reload the player to try again.</p>
+<script>
+  const video = document.getElementById('video');
+  const toggle = document.getElementById('toggle');
+  let feedbackTimer;
+  function updateToggle() {
+    toggle.dataset.playing = String(!video.paused);
+    toggle.setAttribute('aria-label', video.paused ? 'Play video' : 'Pause video');
+    toggle.classList.add('feedback');
+    clearTimeout(feedbackTimer);
+    feedbackTimer = setTimeout(() => toggle.classList.remove('feedback'), 650);
+  }
+  toggle.addEventListener('click', () => {
+    if (video.paused) video.play().catch(() => { updateToggle(); });
+    else video.pause();
+  });
+  for (const event of ['play', 'pause', 'ended']) video.addEventListener(event, updateToggle);
+  if (new URLSearchParams(location.search).has('error')) video.src = '/demo/missing-sample.mp4';
+  for (const event of ['timeupdate', 'play', 'pause']) video.addEventListener(event, () => parent.postMessage({ type: 'demo-player-progress', time: video.currentTime, playing: !video.paused }, location.origin));
+  window.addEventListener('message', event => {
+    if (event.origin !== location.origin || event.source !== parent || event.data?.type !== 'demo-player-resume') return;
+    function resume() {
+      if (Number.isFinite(event.data.time)) video.currentTime = Math.min(Math.max(0, event.data.time), video.duration || 0);
+      if (event.data.playing) video.play().catch(() => {});
+    }
+    if (video.readyState >= 1) resume();
+    else video.addEventListener('loadedmetadata', resume, { once: true });
+  });
+  video.addEventListener('error', () => {
+    toggle.hidden = true;
+    document.getElementById('error').hidden = false;
+    parent.postMessage({ type: 'demo-player-error' }, location.origin);
+  });
+</script>
+</html>

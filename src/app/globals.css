@@ -6,6 +6,8 @@
   --color-foreground: #f4f0fb;
   --color-line: #ffffff12;
   --color-card: #211333;
+  --color-accent: #ed145b;
+  --color-muted: #b1a0c2;
   --font-sans: 'DM Sans', Arial, sans-serif;
   --font-heading: 'Manrope', Arial, sans-serif;
   --breakpoint-*: initial;
@@ -17,10 +19,11 @@
 @layer base {
   html { @apply scroll-smooth scroll-pt-[105px] motion-reduce:scroll-auto; }
   body { @apply bg-background font-sans text-foreground; }
+  main { @apply min-h-[95vh]; }
   button { @apply cursor-pointer; }
   button, a, input { @apply [-webkit-tap-highlight-color:transparent]; }
   button:focus-visible, a:focus-visible, article:focus-visible {
-    @apply outline-2 outline-offset-[5px] outline-[#b9a1e4];
+    @apply outline-2 outline-offset-[5px] outline-accent;
   }
   input:focus-visible { @apply outline-none; }
   *, ::before, ::after { @apply motion-reduce:transition-none; }
@@ -28,4 +31,12 @@
 
 @utility page-container {
   @apply mx-auto w-full max-w-[1280px] px-6 max-md:px-4 max-sm:px-2 xl:max-w-[1380px];
+}
+
+@utility badge {
+  @apply inline-flex items-center gap-1.5 rounded-[3px] border border-line bg-card px-2 py-1 text-[11px] text-white;
+}
+
+@utility hd-badge {
+  @apply rounded-[3px] border border-[#75654e30] bg-[#39342c] px-[5px] py-[3px] text-[10px] font-extrabold tracking-[0.3px] text-[#efe7d3];
 }

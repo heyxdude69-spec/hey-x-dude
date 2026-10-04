@@ -5,7 +5,7 @@ export default function Brand({ priority = false, large = false }: { priority?: 
   return (
     <Link href="/" className="inline-flex shrink-0">
       <Image
-        src="/logo.png"
+        src="/logo1.png"
         alt="heyXdude home"
         width={large ? 210 : 150}
         height={large ? 140 : 100}

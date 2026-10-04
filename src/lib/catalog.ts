@@ -1,8 +1,0 @@
-export const categories = ['Latest', 'Indian', 'Recommendations', 'HD'] as const;
-export const artTones = ['bg-[#3f2268]', 'bg-[#32204f]', 'bg-[#452866]', 'bg-[#35215b]'];
-export type Film = { id: number; title: string; category: typeof categories[number]; views: string; rating: number; genre: string; tone: number };
-const latest = ['Beyond the Horizon', 'The Midnight Passenger', 'Echoes of Tomorrow', 'Into the Wild', 'A New Beginning'];
-const indian = ['City of Dreams', 'The Last Monsoon', 'A Thousand Stories', 'Under the Same Sky', 'The River Within'];
-const recommendations = ['Open Roads', 'The Hidden Garden', 'Starlight Stories', 'Far from Home', 'The Quiet Hours'];
-const hd = ['The Silent Ocean', 'Northern Lights', 'A Place to Begin', 'Chasing the Sun', 'After the Rain', 'The Long Way Home', 'Golden Hour', 'Lost in the City', 'The Mountain Between', 'A Different World', 'Moonlit Roads', 'The Art of Living', 'Wild at Heart', 'The Forgotten Valley', 'Summer in September', 'Where We Belong', 'The Blue Frontier', 'Days of Wonder', 'A Beautiful Escape', 'The Other Side', 'Letters to Tomorrow', 'One More Adventure', 'The Last Lighthouse', 'Morning in the Valley', 'Across the Desert'];
-export const films: Film[] = [...latest.map(title => ({ title, category: 'Latest' as const })), ...indian.map(title => ({ title, category: 'Indian' as const })), ...recommendations.map(title => ({ title, category: 'Recommendations' as const })), ...hd.map(title => ({ title, category: 'HD' as const }))].map((film, i) => ({ ...film, id: i + 1, views: `${(2.3 + i * .37).toFixed(1)}k`, rating: 96 + i % 5, genre: ['Adventure', 'Thriller', 'Sci-fi', 'Drama'][i % 4], tone: i % 4 }));

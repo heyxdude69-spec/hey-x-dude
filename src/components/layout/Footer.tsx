@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { ArrowUpRight } from 'lucide-react';
 import Brand from './Brand';
-import { categories } from '@/lib/catalog';
+import { categories } from '@/data/catalog';
 
 export default function Footer() {
   return (
@@ -15,16 +15,16 @@ export default function Footer() {
         </div>
         <nav aria-label="Footer navigation" className="pt-5 max-sm:pt-0">
           <h2 className="mb-4 font-heading text-[13px] font-bold text-[#e0d4ec]">Explore</h2>
-          <div className="flex flex-col gap-3 text-[12px] text-[#a393b5]">
-            <Link href="/" className="flex items-center gap-2 hover:text-white">Home<ArrowUpRight size={14} /></Link>
-            <Link href="/#categories" className="flex items-center gap-2 hover:text-white">All categories<ArrowUpRight size={14} /></Link>
+          <div className="flex flex-col gap-3 text-[12px] text-white">
+            <Link href="/" className="flex items-center gap-2 transition-colors hover:text-accent">Home<ArrowUpRight size={14} /></Link>
+            <Link href="/categories" className="flex items-center gap-2 transition-colors hover:text-accent">All categories<ArrowUpRight size={14} /></Link>
           </div>
         </nav>
         <nav aria-label="Footer categories" className="pt-5 max-sm:pt-0">
           <h2 className="mb-4 font-heading text-[13px] font-bold text-[#e0d4ec]">Categories</h2>
-          <div className="flex flex-col gap-3 text-[12px] text-[#a393b5]">
+          <div className="flex flex-col gap-3 text-[12px] text-white">
             {categories.map(category => (
-              <Link key={category} href={`/category/${category.toLowerCase()}`} className="flex items-center gap-2 hover:text-white">
+              <Link key={category} href={`/categories/${category.toLowerCase()}`} className="flex items-center gap-2 transition-colors hover:text-accent">
                 {category === 'HD' ? 'HD collection' : category}<ArrowUpRight size={14} />
               </Link>
             ))}
