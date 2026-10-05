@@ -85,15 +85,15 @@ export default function Navbar() {
     <>
       <header data-hidden={hidden && !open} onFocusCapture={() => setHidden(false)} className="fixed inset-x-0 top-0 z-50 h-[80px] border-b border-line bg-[#120d20] shadow-[0_4px_18px_#00000055] transition-transform duration-200 data-[hidden=true]:-translate-y-full max-sm:h-[64px]">
         <nav className="page-container relative flex h-full items-center gap-8 max-md:gap-6 max-sm:gap-2" aria-label="Main navigation">
-          <button ref={menuTrigger} aria-label="Open navigation menu" aria-expanded={open === 'menu'} aria-controls="menu-sidebar" onClick={() => setOpen('menu')} className="grid size-11 shrink-0 place-items-center rounded-none border border-[#3d3d3d] text-accent transition-colors hover:border-accent active:border-accent aria-expanded:border-accent max-sm:size-10">
+          <button ref={menuTrigger} aria-label="Open navigation menu" aria-expanded={open === 'menu'} aria-controls="menu-sidebar" onClick={() => setOpen('menu')} className="grid size-11 shrink-0 place-items-center rounded-none border-[0.2px] border-white/50 text-accent transition-colors hover:border-accent active:border-accent aria-expanded:border-accent max-sm:size-10">
             <Menu size={28} strokeWidth={1} className="max-sm:size-6" />
           </button>
           <div className="absolute top-1/2 left-1/2 flex -translate-x-1/2 -translate-y-1/2"><Brand priority /></div>
-          <div className="ml-auto flex h-full items-center gap-8 text-[13px] text-white max-md:gap-3 max-md:text-[11px] max-sm:h-auto max-sm:flex-col max-sm:gap-1 max-sm:text-[9px]">
+          <div className="ml-auto flex h-full items-center gap-8 text-[13px] text-white max-md:gap-3 max-md:text-[11px] max-[700px]:hidden">
             <Link href="/" aria-current={pathname === '/' ? 'page' : undefined} className="relative flex h-full items-center text-white transition-colors hover:text-accent after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 aria-[current=page]:after:bg-accent aria-[current=page]:text-accent">Home</Link>
             <Link href="/categories" aria-current={categoryActive ? 'page' : undefined} className="relative flex h-full items-center transition-colors hover:text-accent after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 aria-[current=page]:after:bg-accent aria-[current=page]:text-accent">Categories</Link>
           </div>
-          <button ref={trigger} className="grid place-items-center rounded-[3px] p-2.5 text-white transition-colors hover:text-accent max-sm:p-2" aria-label="Open search" aria-expanded={open === 'search'} onClick={() => setOpen('search')}>
+          <button ref={trigger} className="grid place-items-center rounded-[3px] p-2.5 text-white transition-colors hover:text-accent max-[700px]:ml-auto max-sm:p-2" aria-label="Open search" aria-expanded={open === 'search'} onClick={() => setOpen('search')}>
             <Search size={20} />
           </button>
         </nav>
