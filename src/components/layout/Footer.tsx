@@ -1,9 +1,9 @@
 import Link from 'next/link';
 import { ArrowUpRight } from 'lucide-react';
 import Brand from './Brand';
-import { categories } from '@/data/catalog';
+import type { NavigationCategory } from '@/lib/navigation-api';
 
-export default function Footer() {
+export default function Footer({ categories }: { categories: NavigationCategory[] }) {
   return (
     <footer className="border-t border-line bg-[#130d20]">
       <div className="page-container grid grid-cols-[1.5fr_1fr_1fr] items-start gap-10 py-7 max-sm:grid-cols-2 max-sm:gap-x-6 max-sm:gap-y-5 max-sm:py-4">
@@ -24,8 +24,8 @@ export default function Footer() {
           <h2 className="mb-4 font-heading text-[13px] font-bold text-[#e0d4ec]">Categories</h2>
           <div className="flex flex-col gap-3 text-[12px] text-white">
             {categories.map(category => (
-              <Link key={category} href={`/categories/${category.toLowerCase()}`} className="flex items-center gap-2 transition-colors hover:text-accent">
-                {category === 'HD' ? 'HD collection' : category}<ArrowUpRight size={14} />
+              <Link key={category.slug} href={`/categories/${category.slug}`} className="flex items-center gap-2 transition-colors hover:text-accent">
+                {category.name}<ArrowUpRight size={14} />
               </Link>
             ))}
           </div>

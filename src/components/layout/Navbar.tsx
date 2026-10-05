@@ -1,21 +1,43 @@
 'use client';
 
 import Link from 'next/link';
-import Image from 'next/image';
+import CategoryPoster from '@/components/catalog/CategoryPoster';
 import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { ArrowRight, ArrowUpRight, Menu, Search, X } from 'lucide-react';
-import { categories, films } from '@/data/catalog';
+import type { SearchSuggestion } from '@/lib/search-api';
+import type { NavigationCategory } from '@/lib/navigation-api';
 import Brand from './Brand';
 
 const iconButton = 'grid place-items-center rounded-[3px] bg-transparent p-[7px] text-white transition-colors hover:text-accent';
 
-export default function Navbar() {
+export default function Navbar({ categories }: { categories: NavigationCategory[] }) {
   const pathname = usePathname();
   const categoryActive = pathname === '/categories' || pathname.startsWith('/categories/');
   const [open, setOpen] = useState<'menu' | 'search' | null>(null);
   const [query, setQuery] = useState('');
   const [hidden, setHidden] = useState(false);
+  const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([]);
+  const [searchState, setSearchState] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
+  const [loadedQuery, setLoadedQuery] = useState('');
+  const search = query.trim().toLowerCase().replace(/\s+/g, ' ');
+  useEffect(() => {
+    if (open !== 'search') return;
+    setSuggestions([]); setSearchState('loading');
+    if (search && search.length < 2) { setSearchState('idle'); return; }
+    const controller = new AbortController();
+    const timer = setTimeout(async () => {
+      try {
+        const response = await fetch(`/api/search?q=${encodeURIComponent(search)}`, { signal: controller.signal, cache: 'no-store' });
+        if (!response.ok) throw new Error('Search unavailable');
+        const data = await response.json();
+        if (!Array.isArray(data.videos) || data.videos.length > 7) throw new Error('Invalid suggestions');
+        if (controller.signal.aborted) return;
+        setSuggestions(data.videos); setLoadedQuery(search); setSearchState('ready');
+      } catch { if (!controller.signal.aborted) setSearchState('error'); }
+    }, search ? 300 : 0);
+    return () => { clearTimeout(timer); controller.abort(); };
+  }, [open, search]);
   const input = useRef<HTMLInputElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
   const menuTrigger = useRef<HTMLButtonElement>(null);
@@ -78,8 +100,7 @@ export default function Navbar() {
     };
   }, [open]);
 
-  const search = query.trim().toLowerCase();
-  const results = films.filter(film => `${film.title} ${film.movie} ${film.language} ${film.categories.join(" ")} ${film.tags.join(" ")}`.toLowerCase().includes(search)).slice(0, 7);
+  const results = loadedQuery === search ? suggestions : [];
 
   return (
     <>
@@ -108,7 +129,7 @@ export default function Navbar() {
           </div>
           <nav aria-label="Menu navigation" className="flex flex-col text-[14px]" onClick={event => { if ((event.target as HTMLElement).closest('a')) setOpen(null); }}>
             <Link href="/" className="border-b border-line py-4 text-white transition-colors hover:text-accent">Home</Link>
-            {categories.map(category => <Link key={category} href={`/categories/${category.toLowerCase()}`} className="border-b border-line py-4 text-white transition-colors hover:text-accent">{category === 'HD' ? 'HD collection' : category}</Link>)}
+            {categories.map(category => <Link key={category.slug} href={`/categories/${category.slug}`} className="border-b border-line py-4 text-white transition-colors hover:text-accent">{category.name}</Link>)}
           </nav>
         </aside>
       </div>
@@ -124,22 +145,22 @@ export default function Navbar() {
           </div>
           <div className="flex items-center gap-2.5 border border-[#765591] bg-[#281b3a] px-[13px] py-[11px] text-[#b39aca] focus-within:border-accent">
             <Search size={20} className="shrink-0" />
-            <input ref={input} value={query} onChange={event => setQuery(event.target.value)} placeholder="Search titles, genres, categories…" aria-label="Search collection" className="min-w-0 w-full border-0 bg-transparent text-[12px] leading-[25px] text-white placeholder:text-[#94809f]" />
+<input ref={input} value={query} maxLength={100} onChange={event => setQuery(event.target.value)} placeholder="Search titles, tags, categories…" aria-label="Search collection" className="min-w-0 w-full border-0 bg-transparent text-[12px] leading-[25px] text-white placeholder:text-[#94809f]" />
             {query && <button className={iconButton} onClick={() => { setQuery(''); input.current?.focus(); }} aria-label="Clear search"><X size={16} /></button>}
           </div>
-          <p className="mt-[25px] mb-3.5 text-[10px] text-[#8e7d9f]" aria-live="polite">{search ? `${results.length} suggestions` : 'Popular in the collection'}</p>
+          <p className="mt-[25px] mb-3.5 text-[10px] text-[#8e7d9f]" aria-live="polite">{searchState === 'error' ? 'Search is temporarily unavailable' : search && search.length < 2 ? 'Type at least 2 characters' : searchState === 'loading' || loadedQuery !== search ? 'Searching…' : search ? `${results.length} suggestions` : 'Latest in the collection'}</p>
           <div>
             {results.map(film => (
-              <Link key={film.id} href={`/video/${film.slug}`} onClick={() => setOpen(null)} className="flex items-center gap-3 border-b border-line py-3 text-white transition-colors hover:text-accent">
-<Image src={film.thumbnail} alt="" width={80} height={45} className="h-[45px] w-20 shrink-0 rounded-[3px] object-cover" />
+              <Link key={film.id} href={`/${film.slug}`} onClick={() => setOpen(null)} className="flex items-center gap-3 border-b border-line py-3 text-white transition-colors hover:text-accent">
+                <div className="relative h-[45px] w-20 shrink-0 overflow-hidden rounded-[3px]"><CategoryPoster url={film.thumbnail} alt="" sizes="80px" /></div>
                 <span>
                   <strong className="block text-[12px] font-medium">{film.title}</strong>
-                  <small className="mt-[7px] block text-[10px] text-[#8e7e9f]">{film.genre}<span className="mx-[5px]">·</span>{film.category}</small>
+                  <small className="mt-[7px] block text-[10px] text-[#8e7e9f]">{film.category}{film.category && film.language && <span className="mx-[5px]">·</span>}{film.language}</small>
                 </span>
                 <ArrowUpRight size={18} className="ml-auto shrink-0" />
               </Link>
             ))}
-            {results.length === 0 && (
+            {results.length === 0 && searchState === 'ready' && loadedQuery === search && (
               <div className="px-[15px] py-[45px] text-center text-[#a68fbb]">
                 <Search size={30} className="mx-auto" />
                 <h3 className="my-3 text-[15px] font-bold">No titles found</h3>

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AlertCircle, LoaderCircle, RotateCw } from 'lucide-react';
-import type { VideoServer } from '@/data/catalog';
+type VideoServer = { id?: string; provider: string; embedUrl: string; kind?: 'embed' | 'direct' };
 
 export default function EmbedPlayer({ title, servers }: { title: string; servers: VideoServer[] }) {
   const [active, setActive] = useState(0);
@@ -25,14 +25,7 @@ export default function EmbedPlayer({ title, servers }: { title: string; servers
 
   useEffect(() => {
     setMounted(true);
-    function onMessage(event: MessageEvent) {
-      if (event.origin !== window.location.origin || event.source !== frame.current?.contentWindow) return;
-      if (event.data?.type === 'demo-player-error') fail();
-      if (event.data?.type === 'demo-player-progress' && Number.isFinite(event.data.time) && event.data.time >= 0) playback.current = { time: event.data.time, playing: event.data.playing === true };
-    }
-    window.addEventListener('message', onMessage);
-    return () => window.removeEventListener('message', onMessage);
-  }, [fail]);
+  }, []);
 
   useEffect(() => {
     if (!embedUrl || status !== 'loading') return;
@@ -50,16 +43,18 @@ export default function EmbedPlayer({ title, servers }: { title: string; servers
   return (
     <div>
       <div role="group" aria-label="Video servers" className="mb-2 flex flex-wrap gap-2">
-        {servers.map((server, index) => <button key={server.provider} aria-pressed={active === index} onClick={() => selectServer(index)} className="badge cursor-pointer px-3 py-2 transition-colors hover:border-accent hover:text-accent aria-pressed:border-accent aria-pressed:bg-accent aria-pressed:text-white">Server {index + 1}</button>)}
+        {servers.map((server, index) => <button key={server.id || `${server.provider}-${index}`} aria-pressed={active === index} onClick={() => selectServer(index)} className="badge cursor-pointer px-3 py-2 transition-colors hover:border-accent hover:text-accent aria-pressed:border-accent aria-pressed:bg-accent aria-pressed:text-white">Server {index + 1}</button>)}
       </div>
       <p className="mb-3 text-[11px] text-muted">If a server isn't working, switch to another one.</p>
       <p aria-live="polite" className="text-[11px] text-muted">{notice}</p>
       <div className="relative aspect-video w-full overflow-hidden bg-black" aria-label="Video player" aria-busy={!!embedUrl && status === 'loading'}>
-        {mounted && embedUrl && status !== 'error' && <iframe key={`${active}-${attempt}`} ref={frame} src={embedUrl} title={`${title} — Server ${active + 1}`} className="absolute inset-0 h-full w-full border-0" allow="autoplay; fullscreen; picture-in-picture; encrypted-media" allowFullScreen onLoad={event => {
+        {mounted && embedUrl && status !== 'error' && servers[active]?.kind !== 'direct' && <iframe key={`${active}-${attempt}`} ref={frame} src={embedUrl} title={`${title} — Server ${active + 1}`} className="absolute inset-0 h-full w-full border-0" allow="autoplay; fullscreen; picture-in-picture; encrypted-media" allowFullScreen onLoad={event => {
           if (event.currentTarget !== frame.current) return;
           setStatus(current => current === 'error' ? current : 'ready');
-          if (embedUrl.startsWith('/demo/player.html')) frame.current?.contentWindow?.postMessage({ type: 'demo-player-resume', ...playback.current }, window.location.origin);
         }} onError={event => { if (event.currentTarget === frame.current) fail(); }} />}
+        {mounted && embedUrl && status !== 'error' && servers[active]?.kind === 'direct' && <video key={`${active}-${attempt}`} src={embedUrl} controls preload="metadata" className="absolute inset-0 h-full w-full" aria-label={title}
+          onLoadedMetadata={event => { setStatus('ready'); if (playback.current.time < event.currentTarget.duration) event.currentTarget.currentTime = playback.current.time; }}
+          onTimeUpdate={event => { playback.current = { time: event.currentTarget.currentTime, playing: !event.currentTarget.paused }; }} onError={fail} />}
         {(!embedUrl || status !== 'ready') && <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black p-4 text-center" role="status">
           {embedUrl && status === 'loading' ? <LoaderCircle size={28} className="animate-spin text-accent motion-reduce:animate-none" /> : <AlertCircle size={28} className="text-muted" />}
           <p className="text-[13px] text-white/75">{!embedUrl ? 'This video is currently unavailable.' : status === 'loading' ? `Loading Server ${active + 1}…` : 'The servers could not be loaded. Please try again.'}</p>

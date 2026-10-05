@@ -1,0 +1,13 @@
+node_modules/
+.env
+.env.*
+!.env.example
+adminhandlers/
+.runtime/
+imports/
+scripts/reports/
+public/sitemaps/
+coverage/
+*.log
+__pycache__/
+*.pyc
