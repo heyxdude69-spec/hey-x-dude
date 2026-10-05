@@ -1,7 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import mongoose from 'mongoose';
+import { modelsFor } from '../src/models.mjs';
 import { makeInteractions, voteDelta, interactionSummary } from '../src/interactions.mjs';
 function fixture() {
+  const validationModel = modelsFor(mongoose.createConnection()).Video;
   let metrics = { views: 7, likes: 2, dislikes: 1 }, states = new Map(), comments = new Map(), nextId = 0;
   const q = value => ({ session() { return this; }, select() { return this; }, maxTimeMS() { return this; }, lean() { return this; },
     sort() { return this; }, limit() { return this; }, then(resolve, reject) { return Promise.resolve(value).then(resolve, reject); } });
@@ -30,7 +33,7 @@ function fixture() {
     try { return await run(); } catch(error) { metrics = savedMetrics; states = savedStates; comments = savedComments; throw error; }
   }, async endSession() {} }; } }, Video: {
     findOne(filter) { return q(filter.slug === 'forest' ? { _id: 'video', metrics: structuredClone(metrics) } : null); },
-    updateOne(_filter, stages) { const updates = Object.fromEntries(Object.entries(stages[0].$set).map(([field, value]) => [field.split('.')[1], evaluate(value)])); metrics = { ...metrics, ...updates }; return q({ modifiedCount: 1 }); },
+    updateOne(_filter, stages, options) { assert.doesNotThrow(() => validationModel.updateOne({}, stages, options)); const updates = Object.fromEntries(Object.entries(stages[0].$set).map(([field, value]) => [field.split('.')[1], evaluate(value)])); metrics = { ...metrics, ...updates }; return q({ modifiedCount: 1 }); },
   } };
   return { api: makeInteractions(database, { queryTimeoutMs: 1000, interactionSecret: 's'.repeat(64) }, { Interaction, Comment }),
     approve() { for (const comment of comments.values()) comment.status = 'approved'; }, comments: () => comments.size };

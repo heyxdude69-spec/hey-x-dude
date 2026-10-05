@@ -95,7 +95,7 @@ export function makeInteractions(database, config, models = interactionModels(da
             'metrics.likes': { $max: [0, { $add: [{ $ifNull: ['$metrics.likes', 0] }, delta.likes] }] },
             'metrics.dislikes': { $max: [0, { $add: [{ $ifNull: ['$metrics.dislikes', 0] }, delta.dislikes] }] },
             'metrics.views': { $add: [{ $ifNull: ['$metrics.views', 0] }, viewDelta] },
-          } }], { session, timestamps: false }).maxTimeMS(timeout);
+          } }], { session, timestamps: false, updatePipeline: true }).maxTimeMS(timeout);
         }
         const current = await video(slug, session);
         return interactionSummary(current.metrics, state.vote);
