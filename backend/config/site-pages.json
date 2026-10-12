@@ -1,0 +1,17 @@
+{
+  "site": {
+    "name": "Video Catalog",
+    "language": "en-US"
+  },
+  "categories": {
+    "h1": "Video Categories",
+    "description": "Explore the video catalog by topic. Choose a category to browse its videos and open an individual watch page.",
+    "bodyText": "Each category brings together videos on a shared topic. Browse the categories below to find the subjects you want to watch.",
+    "seo": {
+      "title": "Video Categories | Video Catalog",
+      "metaDescription": "Browse the video catalog by category. Explore topics, discover matching videos and open individual video watch pages.",
+      "targetKeyword": "video categories",
+      "indexAllowed": true
+    }
+  }
+}
