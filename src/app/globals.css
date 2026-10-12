@@ -42,3 +42,11 @@
 @utility hd-badge {
   @apply rounded-[3px] border border-[#75654e30] bg-[#39342c] px-[5px] py-[3px] text-[10px] font-extrabold tracking-[0.3px] text-[#efe7d3];
 }
+
+/* Loading boundaries own the screen; no persistent chrome until they resolve. */
+body:has(main[aria-busy="true"]), body:has([data-brand-loader="fullscreen"]) { padding-top: 0; }
+body:has([data-brand-loader="fullscreen"]) { overflow: hidden; }
+body:has(main[aria-busy="true"]) > header,
+body:has(main[aria-busy="true"]) > footer,
+body:has([data-brand-loader="fullscreen"]) > header,
+body:has([data-brand-loader="fullscreen"]) > footer { visibility: hidden; }
