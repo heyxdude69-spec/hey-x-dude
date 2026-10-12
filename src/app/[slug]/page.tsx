@@ -1,13 +1,13 @@
 import type { Metadata } from 'next';
 import { cache } from 'react';
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import EmbedPlayer from '@/components/catalog/EmbedPlayer';
+import VideoTaxonomy from '@/components/catalog/VideoTaxonomy';
 import VideoInteractions, { VideoInteractionProvider } from '@/components/catalog/VideoInteractions';
 import VideoRecommendations from '@/components/catalog/VideoRecommendations';
 import { formatDuration } from '@/lib/format-duration';
 import { getVideoPage, VideoNotFound, safeStructuredJson } from '@/lib/video-api';
-export const dynamic = 'force-dynamic';
+// Request rendering is controlled by the root layout; public fetches have bounded TTLs.
 const loadVideo = cache(getVideoPage);
 type Props = { params: Promise<{ slug: string }> };
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -35,22 +35,15 @@ export default async function VideoPage({ params }: Props) {
     <section aria-labelledby="video-title" className="mx-auto w-full max-w-[1800px] px-6 py-4 max-md:px-4 max-sm:px-2 max-sm:py-3">
       <div className="w-full max-w-[1100px] max-sm:max-w-none">
         <div className="mb-4 flex flex-wrap items-center gap-x-5 gap-y-2">
-          <h1 id="video-title" className="font-heading text-[27px] font-extrabold leading-tight max-sm:text-[20px]">{video.h1}</h1>
-          <VideoInteractions slug={video.slug} header />
+          <h1 id="video-title" className="font-heading text-[27px] font-extrabold leading-tight min-w-0 [overflow-wrap:anywhere] max-sm:w-full max-sm:text-[20px]">{video.h1}</h1>
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2"><VideoInteractions slug={video.slug} header /></div>
         </div>
         <p className="mb-3 flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-muted"><span>{primary?.name || 'Videos'}</span><span>{video.language}</span><span>{video.card.duration === null ? '—' : formatDuration(video.card.duration)}</span>
           {video.uploadDate && <time dateTime={video.uploadDate}>{new Date(video.uploadDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })}</time>}
           <span className="hd-badge">{video.card.quality}</span></p>
-        <div className="mb-4 flex flex-wrap gap-2 text-[12px]">
-          {video.categories.map(category => <Link key={category.slug} href={`/categories/${category.slug}`} className="badge px-3 py-2 text-white transition-colors hover:border-accent hover:text-accent">{category.name}</Link>)}
-          {video.tags.map(tag => <Link key={tag} href={`/tag/${tag}`} className="badge px-3 py-2 transition-colors hover:border-accent hover:text-accent">{tag}</Link>)}
-        </div>
         <EmbedPlayer key={video.slug} title={video.title} servers={video.servers} />
         <VideoInteractions slug={video.slug} description={video.description} bodyText={video.bodyText} />
-        <dl className="mt-5 space-y-3 border-t border-line pt-4 text-[12px]">
-          <div className="flex flex-wrap items-center gap-2"><dt className="mr-2 text-white/60">Categories:</dt>{video.categories.map(category => <dd key={category.slug}><Link href={`/categories/${category.slug}`} className="badge px-3 py-1.5 text-white transition-colors hover:border-accent hover:text-accent">{category.name}</Link></dd>)}</div>
-          <div className="flex flex-wrap items-center gap-2"><dt className="mr-2 text-white/60">Tags:</dt>{video.tags.map(tag => <dd key={tag}><Link href={`/tag/${tag}`} className="badge px-3 py-1.5 transition-colors hover:border-accent hover:text-accent">{tag}</Link></dd>)}</div>
-        </dl>
+        <VideoTaxonomy categories={video.categories} tags={video.tags} />
       </div>
     </section>
     <VideoRecommendations key={video.slug} films={video.recommendations} exploreUrl={video.exploreUrl} />

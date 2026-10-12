@@ -43,7 +43,7 @@ export default function EmbedPlayer({ title, servers }: { title: string; servers
   return (
     <div>
       <div role="group" aria-label="Video servers" className="mb-2 flex flex-wrap gap-2">
-        {servers.map((server, index) => <button key={server.id || `${server.provider}-${index}`} aria-pressed={active === index} onClick={() => selectServer(index)} className="badge cursor-pointer px-3 py-2 transition-colors hover:border-accent hover:text-accent aria-pressed:border-accent aria-pressed:bg-accent aria-pressed:text-white">Server {index + 1}</button>)}
+        {servers.map((server, index) => <button key={server.id || `${server.provider}-${index}`} aria-pressed={active === index} onClick={() => selectServer(index)} className="badge cursor-pointer px-3 py-2 max-sm:min-h-11 max-sm:min-w-20 transition-colors hover:border-accent hover:text-accent aria-pressed:border-accent aria-pressed:bg-accent aria-pressed:text-white">Server {index + 1}</button>)}
       </div>
       <p className="mb-3 text-[11px] text-muted">If a server isn't working, switch to another one.</p>
       <p aria-live="polite" className="text-[11px] text-muted">{notice}</p>
@@ -58,10 +58,10 @@ export default function EmbedPlayer({ title, servers }: { title: string; servers
         {(!embedUrl || status !== 'ready') && <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black p-4 text-center" role="status">
           {embedUrl && status === 'loading' ? <LoaderCircle size={28} className="animate-spin text-accent motion-reduce:animate-none" /> : <AlertCircle size={28} className="text-muted" />}
           <p className="text-[13px] text-white/75">{!embedUrl ? 'This video is currently unavailable.' : status === 'loading' ? `Loading Server ${active + 1}…` : 'The servers could not be loaded. Please try again.'}</p>
-          {embedUrl && status === 'error' && <button onClick={() => selectServer(0)} className="badge cursor-pointer hover:border-accent hover:text-accent"><RotateCw size={14} />Retry servers</button>}
+          {embedUrl && status === 'error' && <button onClick={() => selectServer(0)} className="badge cursor-pointer max-sm:min-h-11 hover:border-accent hover:text-accent"><RotateCw size={14} />Retry servers</button>}
         </div>}
       </div>
-      {embedUrl && status === 'ready' && <div className="mt-2 flex justify-end"><button onClick={() => selectServer(active)} className="flex items-center gap-1.5 text-[11px] text-muted hover:text-accent"><RotateCw size={12} />Reload player</button></div>}
+      {embedUrl && status === 'ready' && <div className="mt-2 flex justify-end"><button onClick={() => selectServer(active)} className="flex items-center gap-1.5 max-sm:min-h-11 max-sm:px-2 text-[11px] text-muted hover:text-accent"><RotateCw size={12} />Reload player</button></div>}
     </div>
   );
 }

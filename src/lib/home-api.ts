@@ -40,7 +40,7 @@ export async function getHome(section?: string, page = 1): Promise<HomeData> {
   if (!['https:', 'http:'].includes(base.protocol) || base.username || base.password || base.pathname !== '/' || base.search || base.hash) throw new Error('Invalid API origin');
   const url = new URL('/api/home', base); url.searchParams.set('page', String(page));
   if (section) url.searchParams.set('section', section);
-  const response = await fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(8000),
+  const response = await fetch(url, { cache: 'force-cache', next: { revalidate: 30 }, signal: AbortSignal.timeout(8000),
     headers: process.env.INTERACTION_PROXY_SECRET ? { 'X-Interaction-Secret': process.env.INTERACTION_PROXY_SECRET } : undefined });
   if (response.status === 404) throw new HomeCollectionNotFound();
   if (!response.ok) throw new Error(`Home API unavailable (${response.status})`);

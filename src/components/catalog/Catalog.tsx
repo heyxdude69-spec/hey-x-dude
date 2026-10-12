@@ -9,7 +9,7 @@ export default function Catalog({ data }: { data: HomeData }) {
 
   return (
     <main className="page-container pt-1.5 max-sm:pt-0">
-      {sections.map(section => (
+      {sections.map((section, sectionIndex) => (
         <section key={section.key} className="border-b border-line py-5 last:border-b-0 max-sm:py-3" aria-labelledby={`heading-${section.key}`}>
           <div className="mb-3 flex items-center justify-between max-sm:mb-2">
             <div className="flex items-center gap-[11px]">
@@ -19,7 +19,7 @@ export default function Catalog({ data }: { data: HomeData }) {
             <a href={section.seeMoreUrl} className="flex items-center gap-[9px] text-[11px] text-white transition-colors hover:text-accent">{section.seeMoreLabel}<ArrowRight size={16} /></a>
           </div>
           <div className={`grid grid-cols-5 gap-3.5 max-md:grid-cols-4 max-md:gap-2.5 max-sm:grid-cols-2 max-sm:gap-1.5 ${!selected ? 'max-md:[&>article:last-child]:hidden' : ''}`}>
-            {section.films.map(film => <FilmCard key={film.id} film={film} />)}
+            {section.films.map((film, filmIndex) => <FilmCard key={film.id} film={film} compact priority={sectionIndex === 0 && filmIndex < 2} />)}
           </div>
           {section.paginate && <Pagination currentPage={section.pagination.currentPage} pageCount={section.pagination.pageCount}
             basePath={selected ? `/?section=${section.key}` : '/'} anchor={`heading-${section.key}`} label={`${section.title} pagination`} />}

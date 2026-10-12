@@ -20,7 +20,8 @@ test('directory fetch consumes API cursors and reports outages without dummy dat
   try {
     globalThis.fetch = async (url, options) => {
       assert.equal(url.searchParams.get('rating'), 'general');
-      assert.equal(options.cache, 'no-store');
+      assert.equal(options.cache, 'force-cache');
+      assert.equal(options.next.revalidate, 120);
       calls++;
       if (calls === 2) assert.equal(url.searchParams.get('cursor'), 'forest');
       return { ok: true, json: async () => ({ categories: [{ slug: calls === 1 ? 'forest' : 'travel', name: 'Collection', videoCount: 2 }],

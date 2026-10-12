@@ -22,7 +22,7 @@ export async function getTagVideos(slug: string, page: number): Promise<TagPageD
   if (!['general', 'adult'].includes(rating)) throw new Error('Invalid content rating');
   const url = new URL(`/api/tags/${encodeURIComponent(slug)}/videos`, origin);
   url.searchParams.set('page', String(page)); url.searchParams.set('rating', rating);
-  const response = await fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(8000),
+  const response = await fetch(url, { cache: 'force-cache', next: { revalidate: 60 }, signal: AbortSignal.timeout(8000),
     headers: process.env.INTERACTION_PROXY_SECRET ? { 'X-Interaction-Secret': process.env.INTERACTION_PROXY_SECRET } : undefined });
   if (response.status === 404) throw new TagNotFound();
   if (!response.ok) throw new Error(`Tag API unavailable (${response.status})`);

@@ -72,8 +72,8 @@ export function createApp({ database, cache, config, logRequests = true }) {
   app.get('/api/videos', async (req, res) => publicCache(res).json(await catalog.list(listingOptions(req))));
   const searchCatalog = makeSearch(database, cache, config);
   app.get('/api/search', async (req, res) => {
-    const { q, rating } = z.object({ q: z.string().max(100).default(''), rating: z.enum(['general', 'adult']).default('general') }).strict().parse(req.query);
-    publicCache(res).json(await searchCatalog(q, rating));
+    const { q, rating, page } = z.object({ q: z.string().max(100).default(''), rating: z.enum(['general', 'adult']).default('general'), page: z.coerce.number().int().min(1).max(100).optional() }).strict().parse(req.query);
+    publicCache(res).json(await searchCatalog(q, rating, page ?? null));
   });
   app.get('/api/navigation', async (req, res) => {
     const { rating } = z.object({ rating: z.enum(['general', 'adult']).default('general') }).strict().parse(req.query);

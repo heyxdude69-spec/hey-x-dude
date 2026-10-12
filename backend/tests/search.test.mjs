@@ -9,6 +9,7 @@ test('search isolates published ratings and filters unapproved sources with boun
   const calls = [];
   function model(name, rows) { return { find(filter) { calls.push([name, filter]); return {
     select() { return this; }, sort(value) { calls.push(['sort', value]); return this; },
+    skip(value) { calls.push(['skip', value]); return this; },
     limit(value) { calls.push(['limit', value]); return this; }, maxTimeMS() { return this; }, lean: async () => rows,
   }; } }; }
   const database = {
@@ -25,6 +26,13 @@ test('search isolates published ratings and filters unapproved sources with boun
   assert.equal(result.videos[0].category, 'Nature');
   assert.deepEqual(calls[0], ['Video', { status: 'published', contentRating: 'general', $text: { $search: 'forest', $language: 'none' } }]);
   assert.ok(calls.some(call => call[0] === 'limit' && call[1] === 28));
+  calls.length = 0;
+  const paged = await search('Forest', 'general', 2);
+  assert.equal(paged.page, 2);
+  assert.equal(paged.hasMore, false);
+  assert.equal(paged.videos.length, 1);
+  assert.ok(calls.some(call => call[0] === 'skip' && call[1] === 48));
+  assert.ok(calls.some(call => call[0] === 'limit' && call[1] === 49));
   calls.length = 0;
   await search('', 'adult');
   assert.deepEqual(calls[0], ['Video', { status: 'published', contentRating: 'adult' }]);

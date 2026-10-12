@@ -75,7 +75,7 @@ export async function getVideoPage(slug: string): Promise<VideoPageData> {
   if (!process.env.CATALOG_API_ORIGIN) throw new Error('Set CATALOG_API_ORIGIN');
   const api = new URL(process.env.CATALOG_API_ORIGIN);
   if (!['http:', 'https:'].includes(api.protocol) || api.username || api.password || api.pathname !== '/' || api.search || api.hash) throw new Error('Invalid API origin');
-  const response = await fetch(new URL(`/api/videos/${slug}`, api), { cache: 'no-store', signal: AbortSignal.timeout(8000),
+  const response = await fetch(new URL(`/api/videos/${slug}`, api), { cache: 'force-cache', next: { revalidate: 30 }, signal: AbortSignal.timeout(8000),
     headers: process.env.INTERACTION_PROXY_SECRET ? { 'X-Interaction-Secret': process.env.INTERACTION_PROXY_SECRET } : undefined });
   if (response.status === 404) throw new VideoNotFound();
   if (!response.ok && response.status !== 503) throw new Error(`Video API unavailable (${response.status})`);

@@ -43,7 +43,7 @@ export async function getCategoryCards(): Promise<CategoryCard[]> {
     endpoint.searchParams.set('limit', '48');
     endpoint.searchParams.set('rating', rating);
     if (cursor) endpoint.searchParams.set('cursor', cursor);
-    const response = await fetch(endpoint, { cache: 'no-store', signal: AbortSignal.timeout(8000),
+    const response = await fetch(endpoint, { cache: 'force-cache', next: { revalidate: 120 }, signal: AbortSignal.timeout(8000),
       headers: process.env.INTERACTION_PROXY_SECRET ? { 'X-Interaction-Secret': process.env.INTERACTION_PROXY_SECRET } : undefined });
     if (!response.ok) throw new Error(`Category API unavailable (${response.status})`);
     const data = await response.json();
