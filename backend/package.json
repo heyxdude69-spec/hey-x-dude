@@ -3,14 +3,16 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "engines": { "node": ">=22.14.0" },
+  "engines": {
+    "node": ">=22.14.0"
+  },
   "scripts": {
     "start": "node src/server.mjs",
     "dev": "node --watch src/server.mjs",
     "db:setup": "node scripts/setup_database.mjs",
     "sitemap": "node scripts/build_sitemaps.mjs",
     "worker": "node scripts/catalog_worker.mjs",
-    "test": "node --test --test-concurrency=1 tests/catalog.test.mjs tests/category-cards.test.mjs tests/home.test.mjs tests/interaction-access.test.mjs tests/interactions.test.mjs tests/page-seo.test.mjs tests/recommendations.test.mjs tests/search.test.mjs tests/tag.test.mjs",
+    "test": "node --test --test-concurrency=1 tests/catalog.test.mjs tests/category-cards.test.mjs tests/home.test.mjs tests/interaction-access.test.mjs tests/interactions.test.mjs tests/page-seo.test.mjs tests/recommendations.test.mjs tests/search.test.mjs tests/tag.test.mjs tests/redis-startup.test.mjs",
     "test:integration": "node --test --test-concurrency=1 tests/integration.test.mjs",
     "load:test": "node scripts/load_test.mjs",
     "search:setup": "node scripts/setup_search.mjs"
