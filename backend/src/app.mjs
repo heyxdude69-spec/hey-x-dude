@@ -90,7 +90,7 @@ export function createApp({ database, cache, config, logRequests = true }) {
   });
   let home;
   app.get('/api/home', async (req, res) => {
-    const options = z.object({ section: z.string().max(80).regex(SLUG_PATTERN).optional(), page: z.coerce.number().int().min(1).max(500).optional() }).strict().parse(req.query);
+    const options = z.object({ section: z.string().max(80).regex(SLUG_PATTERN).optional(), page: z.coerce.number().int().min(1).max(1000000).optional() }).strict().parse(req.query);
     home ||= makeHome(database, cache, config);
     publicCache(res).json(await home.get(options));
   });

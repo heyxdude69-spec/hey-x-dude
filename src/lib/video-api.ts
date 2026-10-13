@@ -3,7 +3,7 @@ export type VideoSource = { id: string; provider: string; kind: 'embed' | 'direc
 export type VideoPageData = {
   slug: string; title: string; h1: string; description: string; bodyText: string; language: string; uploadDate?: string;
   tags: string[]; card: CatalogCard; categories: { slug: string; name: string }[]; servers: VideoSource[];
-  recommendations: CatalogCard[]; exploreUrl: string;
+  recommendations: CatalogCard[]; exploreUrl: string; recommendationBadgeSeed: string;
   seo: { title: string; description: string; index: boolean; canonical: string; image?: string; adult: boolean };
   structuredData: Record<string, unknown>[];
 };
@@ -65,6 +65,7 @@ export function parseVideoPage(value: unknown, origin: string): VideoPageData {
   return { slug: video.slug, title: video.title, h1: typeof video.h1 === 'string' && video.h1 ? video.h1 : video.title, description: video.description,
     bodyText: typeof video.bodyText === 'string' ? video.bodyText : '', language: typeof video.language === 'string' ? video.language : 'en', uploadDate,
     tags: Array.isArray(video.tags) ? video.tags.filter((tag: unknown) => typeof tag === 'string') : [],
+    recommendationBadgeSeed: typeof video.recommendationBadgeSeed === 'string' && /^[a-f0-9]{16}$/.test(video.recommendationBadgeSeed) ? video.recommendationBadgeSeed : video.slug,
     card, categories, servers, recommendations, exploreUrl: primary ? `/categories/${primary.slug}` : '/categories',
     seo: { title: video.seo?.title || video.title, description: video.seo?.metaDescription || video.description,
       canonical, index, image, adult: video.contentRating === 'adult' }, structuredData };

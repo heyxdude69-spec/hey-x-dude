@@ -3,7 +3,7 @@ import FilmCard from '@/components/catalog/FilmCard';
 import type { HomeData } from '@/lib/home-api';
 import Pagination from './Pagination';
 
-export default function Catalog({ data }: { data: HomeData }) {
+export default function Catalog({ data, collectionPath }: { data: HomeData; collectionPath?: string }) {
   const selected = !!data.selectedSection;
   const sections = data.sections.filter(row => row.films.length);
 
@@ -18,11 +18,11 @@ export default function Catalog({ data }: { data: HomeData }) {
             </div>
             <a href={section.seeMoreUrl} className="flex items-center gap-[9px] text-[11px] text-white transition-colors hover:text-accent">{section.seeMoreLabel}<ArrowRight size={16} /></a>
           </div>
-          <div className={`grid grid-cols-5 gap-3.5 max-md:grid-cols-4 max-md:gap-2.5 max-sm:grid-cols-2 max-sm:gap-1.5 ${!selected ? 'max-md:[&>article:last-child]:hidden' : ''}`}>
+          <div className={`grid grid-cols-5 gap-3.5 max-md:grid-cols-4 max-md:gap-2.5 max-sm:grid-cols-2 max-sm:gap-1.5 ${!selected && section.films.length % 2 !== 0 ? 'max-md:[&>article:last-child]:hidden' : ''}`}>
             {section.films.map((film, filmIndex) => <FilmCard key={film.id} film={film} compact priority={sectionIndex === 0 && filmIndex < 2} />)}
           </div>
           {section.paginate && <Pagination currentPage={section.pagination.currentPage} pageCount={section.pagination.pageCount}
-            basePath={selected ? `/?section=${section.key}` : '/'} anchor={`heading-${section.key}`} label={`${section.title} pagination`} />}
+            basePath={collectionPath || (selected ? `/?section=${section.key}` : '/')} anchor={`heading-${section.key}`} label={`${section.title} pagination`} />}
         </section>
       ))}
       {!sections.length && <p role="status" className="py-5 text-[13px] text-muted">{data.emptyMessage}</p>}

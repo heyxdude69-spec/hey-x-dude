@@ -35,11 +35,30 @@ test('home obeys DB section order/labels, excludes unplayable sources, clamps pa
   assert.equal(result.sections[0].videos[0].categoryName, 'Nature');
   assert.equal(result.sections[0].title, 'Custom latest title');
   assert.equal(result.sections[0].pagination.currentPage, 1);
-  assert.equal(result.sections[1].pagination.currentPage, 3);
-  assert.equal(result.sections[1].videos.length, 1);
+  assert.equal(result.sections[1].pagination.currentPage, 1);
+  assert.equal(result.sections[1].videos.length, 5);
+  assert.equal(result.sections[1].limit, 8);
+  assert.equal(result.sections[1].paginate, false);
+  assert.equal(result.sections[1].seeMoreUrl, '/collections/hd');
   const collection = await api.get({ section: 'latest' });
   assert.equal(collection.sections[0].videos.length, 3);
   assert.equal(collection.sections[0].pagination.pageCount, 2);
   assert.ok(queries.some(filter => filter['media.quality']?.$in?.includes('hd')));
   await assert.rejects(api.get({ section: 'off' }), /not found/);
+});
+
+
+test('quality collection pages are not restricted to the homepage candidate window', async () => {
+  const quality = section({ key: 'hd', type: 'quality', qualities: ['hd'], windowSize: 6, collectionPageSize: 3 });
+  const q = value => ({ select() { return this; }, lean() { return this; }, maxTimeMS: async () => value });
+  let stages;
+  const database = { Video: { aggregate(value) { stages = value; return { option: async () => [{ total: [{ count: 501 }], rows: [] }] }; } }, VideoSource: {}, Category: {} };
+  const api = makeHome(database, { getOrLoad: (_key, run) => run() }, { providerHosts: { voe: ['player.test'] }, queryTimeoutMs: 1000 }, { findOne: () => q(settings([quality])) });
+  const data = await api.get({ section: 'hd', page: 2 });
+  assert.equal(data.sections[0].pagination.pageCount, 167);
+  assert.equal(data.sections[0].pagination.currentPage, 2);
+  assert.equal(stages.at(-1).$facet.rows[0].$skip, 3);
+  assert.equal(stages.at(-1).$facet.rows[1].$limit, 3);
+  assert.equal(stages.some(stage => '$limit' in stage), false);
+  await assert.rejects(api.get({ section: 'hd', page: 168 }), /not found/);
 });

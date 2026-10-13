@@ -61,3 +61,32 @@ export async function getCategoryCards(): Promise<CategoryCard[]> {
   }
   throw new Error('Category directory exceeds pagination limit');
 }
+
+
+export type CategoryBatch = { categories: CategoryCard[]; nextCursor: string | null };
+export async function getCategoryBatch(cursor?: string): Promise<CategoryBatch> {
+  if (cursor !== undefined && (cursor.length > 80 || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(cursor))) throw new Error('Invalid category cursor');
+  const base = process.env.CATALOG_API_ORIGIN;
+  if (!base) throw new Error('Category service unavailable');
+  const origin = new URL(base);
+  if (!['http:', 'https:'].includes(origin.protocol) || origin.username || origin.password || origin.pathname !== '/' || origin.search || origin.hash) throw new Error('Invalid API origin');
+  const rating = process.env.CATALOG_CONTENT_RATING || 'general';
+  if (!['general', 'adult'].includes(rating)) throw new Error('Invalid rating');
+  const url = new URL('/api/categories', origin);
+  url.searchParams.set('limit', '48'); url.searchParams.set('rating', rating);
+  if (cursor) url.searchParams.set('cursor', cursor);
+  const response = await fetch(url, { cache: 'force-cache', next: { revalidate: 120 }, signal: AbortSignal.timeout(8000),
+    headers: process.env.INTERACTION_PROXY_SECRET ? { 'X-Interaction-Secret': process.env.INTERACTION_PROXY_SECRET } : undefined });
+  if (!response.ok) throw new Error('Category service unavailable');
+  return parseCategoryBatch(await response.json(), cursor);
+}
+export function parseCategoryBatch(value: unknown, cursor?: string): CategoryBatch {
+  if (!value || typeof value !== 'object') throw new Error('Invalid categories response');
+  const raw = value as Record<string, unknown>;
+  if (!Array.isArray(raw.categories) || raw.categories.length > 48) throw new Error('Invalid category batch');
+  const categories = raw.categories.map(mapCategory);
+  if (new Set(categories.map(row => row.slug)).size !== categories.length) throw new Error('Duplicate categories');
+  const next = raw.nextCursor;
+  if (next !== null && (typeof next !== 'string' || next.length > 80 || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(next) || next === cursor || next !== categories.at(-1)?.slug)) throw new Error('Invalid category cursor');
+  return { categories, nextCursor: next as string | null };
+}

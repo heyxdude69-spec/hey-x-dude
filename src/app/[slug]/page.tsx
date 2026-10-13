@@ -41,11 +41,11 @@ export default async function VideoPage({ params }: Props) {
         <p className="mb-3 flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-muted"><span>{primary?.name || 'Videos'}</span><span>{video.language}</span><span>{video.card.duration === null ? '—' : formatDuration(video.card.duration)}</span>
           {video.uploadDate && <time dateTime={video.uploadDate}>{new Date(video.uploadDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })}</time>}
           <span className="hd-badge">{video.card.quality}</span></p>
-        <EmbedPlayer key={video.slug} title={video.title} servers={video.servers} />
+        <EmbedPlayer key={video.slug} title={video.title} servers={video.servers} poster={video.card.thumbnail} />
         <VideoInteractions slug={video.slug} description={video.description} bodyText={video.bodyText} />
         <VideoTaxonomy categories={video.categories} tags={video.tags} />
       </div>
     </section>
-    <VideoRecommendations key={video.slug} films={video.recommendations} exploreUrl={video.exploreUrl} />
+    <VideoRecommendations key={video.slug} films={video.recommendations} badgeSeed={video.recommendationBadgeSeed} exploreUrl={video.exploreUrl} />
   </main></VideoInteractionProvider>;
 }

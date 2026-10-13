@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { randomBytes } from 'node:crypto';
 import { SEARCH_INDEX_KEYS, SEARCH_INDEX_OPTIONS } from './search.mjs';
 
 export const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -38,6 +39,7 @@ const metrics = new mongoose.Schema({
 }, { _id: false, strict: 'throw' });
 
 export const videoSchema = new mongoose.Schema({
+  recommendationBadgeSeed: string(16, { match: /^[a-f0-9]{16}$/, default: () => randomBytes(8).toString('hex') }),
   slug: string(180, { required: true, match: SLUG_PATTERN, immutable: true }),
   title: string(300, { required: true }), h1: string(300, { default: '' }),
   description: string(5000, { default: '' }), bodyText: string(30000, { default: '' }),
@@ -155,7 +157,7 @@ export async function setupDatabase(database) {
     }] }] },
     videos: { $and: [{ $jsonSchema: {
       bsonType: 'object', required: ['slug', 'title', 'status', 'tags', 'contentRating'], additionalProperties: false,
-      properties: { ...common, slug: { bsonType: 'string', pattern: SLUG_PATTERN.source, maxLength: 180 },
+      properties: { ...common, recommendationBadgeSeed: { bsonType: 'string', pattern: '^[a-f0-9]{16}$' }, slug: { bsonType: 'string', pattern: SLUG_PATTERN.source, maxLength: 180 },
         title: { bsonType: 'string', minLength: 1, maxLength: 300 }, h1: text, description: text, bodyText: text, language: text,
         seo: { bsonType: 'object', additionalProperties: false, properties: { title: text, metaDescription: text, targetKeyword: text, indexAllowed: { bsonType: 'bool' } } },
         thumbnail: { bsonType: 'object', additionalProperties: false, properties: { url: text, alt: text, width: { bsonType: ['int', 'double'] }, height: { bsonType: ['int', 'double'] } } },
