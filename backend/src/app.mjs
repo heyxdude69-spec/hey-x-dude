@@ -72,8 +72,8 @@ export function createApp({ database, cache, config, logRequests = true }) {
   app.get('/api/videos', async (req, res) => publicCache(res).json(await catalog.list(listingOptions(req))));
   const searchCatalog = makeSearch(database, cache, config);
   app.get('/api/search', async (req, res) => {
-    const { q, rating } = z.object({ q: z.string().max(100).default(''), rating: z.enum(['general', 'adult']).default('general') }).strict().parse(req.query);
-    publicCache(res).json(await searchCatalog(q, rating));
+    const { q, rating, page } = z.object({ q: z.string().max(100).default(''), rating: z.enum(['general', 'adult']).default('general'), page: z.coerce.number().int().min(1).max(100).optional() }).strict().parse(req.query);
+    publicCache(res).json(await searchCatalog(q, rating, page ?? null));
   });
   app.get('/api/navigation', async (req, res) => {
     const { rating } = z.object({ rating: z.enum(['general', 'adult']).default('general') }).strict().parse(req.query);
@@ -90,7 +90,7 @@ export function createApp({ database, cache, config, logRequests = true }) {
   });
   let home;
   app.get('/api/home', async (req, res) => {
-    const options = z.object({ section: z.string().max(80).regex(SLUG_PATTERN).optional(), page: z.coerce.number().int().min(1).max(500).optional() }).strict().parse(req.query);
+    const options = z.object({ section: z.string().max(80).regex(SLUG_PATTERN).optional(), page: z.coerce.number().int().min(1).max(1000000).optional() }).strict().parse(req.query);
     home ||= makeHome(database, cache, config);
     publicCache(res).json(await home.get(options));
   });
@@ -173,7 +173,7 @@ export function createApp({ database, cache, config, logRequests = true }) {
     else publicCache(res);
     res.type('html').send(renderPage(page, config));
   });
-  app.get('/robots.txt', (_req, res) => res.type('text').send(`User-agent: *\nAllow: /\nDisallow: /api/\nSitemap: ${config.siteOrigin}/sitemap.xml\n`));
+  app.get('/robots.txt', (_req, res) => res.type('text').send(`User-agent: *\nAllow: /\nDisallow: /api/\nSitemap: ${config.publicSiteOrigin || config.siteOrigin}/sitemap.xml\n`));
   app.get('/sitemap.xml', (_req, res, next) => res.set('Cache-Control', 'public, max-age=300').sendFile(`${publicDirectory}/sitemaps/index.xml`, error => error && next(error)));
   app.use('/sitemaps', express.static(`${publicDirectory}/sitemaps`, { maxAge: '5m', index: false, fallthrough: false }));
   app.use('/api/admin', (req, res, next) => {

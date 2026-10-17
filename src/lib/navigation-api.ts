@@ -19,7 +19,7 @@ export async function getNavigationCategories(): Promise<NavigationCategory[]> {
   if (!['general', 'adult'].includes(rating)) throw new Error('Invalid content rating');
   const endpoint = new URL('/api/navigation', origin);
   endpoint.searchParams.set('rating', rating);
-  const response = await fetch(endpoint, { cache: 'no-store', signal: AbortSignal.timeout(8000),
+  const response = await fetch(endpoint, { cache: 'force-cache', next: { revalidate: 300 }, signal: AbortSignal.timeout(8000),
     headers: process.env.INTERACTION_PROXY_SECRET ? { 'X-Interaction-Secret': process.env.INTERACTION_PROXY_SECRET } : undefined });
   if (!response.ok) throw new Error(`Navigation API unavailable (${response.status})`);
   return parseNavigation(await response.json());

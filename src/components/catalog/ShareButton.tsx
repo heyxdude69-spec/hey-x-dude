@@ -21,7 +21,7 @@ export default function ShareButton() {
 
   return (
     <div className="relative text-center">
-      <button onClick={share} className="inline-flex h-10 items-center gap-2 rounded-md border border-line bg-card px-3 text-[12px] text-white transition-colors hover:border-accent hover:text-accent max-sm:text-[11px]"><Share2 size={16} />Share</button>
+      <button onClick={share} className="inline-flex h-10 max-sm:min-h-11 items-center gap-2 rounded-md border border-line bg-card px-3 text-[12px] text-white transition-colors hover:border-accent hover:text-accent max-sm:text-[11px]"><Share2 size={16} />Share</button>
       <p aria-live="polite" className="absolute top-full right-0 z-10 mt-2 w-44 text-[11px] text-white/60">{status}</p>
     </div>
   );

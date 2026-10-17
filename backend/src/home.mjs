@@ -82,7 +82,27 @@ export function makeHome(database, cache, config, Settings = homeModel(database.
       const pageCount = section.paginate ? Math.max(1, Math.ceil(eligible.length / section.limit)) : 1;
       const currentPage = Math.min(page, pageCount), start = section.paginate ? (currentPage - 1) * section.limit : 0;
       const videos = eligible.slice(start, start + section.limit).map(row => ({ ...catalog.card(row), categories: row.categories || [] }));
-      return { ...section, videos, pagination: { currentPage, pageCount }, seeMoreUrl: section.type === 'category' ? `/categories/${section.categorySlug}` : `/?section=${section.key}` };
+      return { ...section, videos, pagination: { currentPage, pageCount }, seeMoreUrl: section.type === 'category' ? `/categories/${section.categorySlug}` : section.type === 'quality' ? `/collections/${section.key}` : `/?section=${section.key}` };
+    });
+  }
+  async function qualityCollection(section, rating, page) {
+    return cache.getOrLoad(`quality-collection:v1:${JSON.stringify(section)}:${rating}:${page}`, async () => {
+      const size = section.collectionPageSize;
+      const projection = Object.fromEntries(fields.split(' ').map(field => [field, 1]));
+      const result = await database.Video.aggregate([
+        { $match: homeFilter(section, rating) }, { $sort: homeSort(section) },
+        { $lookup: { from: 'video_sources', let: { video: '$_id' }, pipeline: [
+          { $match: { $expr: { $eq: ['$videoId', '$$video'] }, enabled: true, status: 'ready', availability: { $ne: 'unavailable' }, $or: approved.length ? approved : [{ _id: null }] } },
+          { $limit: 1 }, { $project: { _id: 1 } }
+        ], as: 'playable' } },
+        { $match: { 'playable.0': { $exists: true } } },
+        { $facet: { total: [{ $count: 'count' }], rows: [{ $skip: (page - 1) * size }, { $limit: size }, { $project: projection }] } }
+      ]).option({ maxTimeMS: config.queryTimeoutMs });
+      const total = result[0]?.total[0]?.count || 0;
+      const pageCount = Math.max(1, Math.ceil(total / size));
+      if (page > pageCount) throw new HttpError(404, 'Collection page not found');
+      return { ...section, paginate: true, videos: (result[0]?.rows || []).map(row => ({ ...catalog.card(row), categories: row.categories || [] })),
+        pagination: { currentPage: page, pageCount }, seeMoreUrl: `/collections/${section.key}` };
     });
   }
   return { async get({ section, page = 1 } = {}) {
@@ -92,7 +112,7 @@ export function makeHome(database, cache, config, Settings = homeModel(database.
     const selected = section ? enabled.filter(row => row.key === section) : enabled;
     if (section && !selected.length) throw new HttpError(404, 'Home collection not found');
     const sections = [];
-    for (let offset = 0; offset < selected.length; offset += 4) sections.push(...await Promise.all(selected.slice(offset, offset + 4).map(row => feed(section ? { ...row, limit: row.collectionPageSize, paginate: true } : row, settings.contentRating, page))));
+    for (let offset = 0; offset < selected.length; offset += 4) sections.push(...await Promise.all(selected.slice(offset, offset + 4).map(row => section && row.type === 'quality' ? qualityCollection(row, settings.contentRating, page) : feed(section ? { ...row, limit: row.collectionPageSize, paginate: true } : row.type === 'quality' ? { ...row, limit: 8, paginate: false } : row, settings.contentRating, page))));
     const slugs = [...new Set(sections.flatMap(row => row.videos.flatMap(video => video.categories)))];
     const categories = slugs.length ? await query(database.Category.find({ slug: { $in: slugs }, status: 'active', contentRating: settings.contentRating }).select('slug name').limit(500).lean()) : [];
     const names = new Map(categories.map(row => [row.slug, row.name]));

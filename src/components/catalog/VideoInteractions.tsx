@@ -47,7 +47,7 @@ export function VideoInteractionProvider({ slug, initialViews, initialRating, ch
   return <Context.Provider value={{ views, rating, vote, ready, busy, error, voteFor }}>{children}</Context.Provider>;
 }
 type Comment = { id: string; name: string; text: string; createdAt: string };
-const action = 'inline-flex h-10 items-center gap-2 rounded-md border border-line bg-card px-3 text-[12px] text-white transition-colors hover:border-accent hover:text-accent aria-pressed:border-accent aria-pressed:text-accent';
+const action = 'inline-flex h-10 max-sm:min-h-11 max-sm:justify-center items-center gap-2 rounded-md border border-line bg-card px-3 text-[12px] text-white transition-colors hover:border-accent hover:text-accent aria-pressed:border-accent aria-pressed:text-accent';
 export default function VideoInteractions({ slug, header = false, description = '', bodyText = '' }: { slug: string; header?: boolean; description?: string; bodyText?: string }) {
   const state = useContext(Context);
   const [tab, setTab] = useState<'about' | 'comments' | null>(null);
@@ -73,25 +73,25 @@ export default function VideoInteractions({ slug, header = false, description = 
   if (header) return <><span className="flex items-center gap-1.5 text-[12px] text-white/60"><Eye size={16} />{state.views} views</span><span className="flex items-center gap-1.5 text-[12px] text-white/60"><ThumbsUp size={16} />{state.rating === null ? '—' : `${state.rating}%`}</span></>;
   return <div className="mt-3">
     <div className="flex flex-wrap items-center gap-2">
-      <div className="mr-2 flex items-center overflow-hidden rounded-md border border-line bg-card">
-        <button disabled={!state.ready || state.busy} aria-label="Like video" aria-pressed={state.vote === 'like'} onClick={() => state.voteFor('like')} className="h-10 px-3 text-white hover:text-accent aria-pressed:text-accent disabled:opacity-40"><ThumbsUp size={16} /></button>
+      <div className="mr-2 max-sm:mr-0 flex items-center overflow-hidden rounded-md border border-line bg-card">
+        <button disabled={!state.ready || state.busy} aria-label="Like video" aria-pressed={state.vote === 'like'} onClick={() => state.voteFor('like')} className="h-10 max-sm:min-h-11 max-sm:min-w-11 px-3 text-white hover:text-accent aria-pressed:text-accent disabled:opacity-40"><ThumbsUp size={16} /></button>
         <span className="border-x border-line px-3 text-[12px]">{state.rating === null ? '—' : `${state.rating}%`}</span>
-        <button disabled={!state.ready || state.busy} aria-label="Dislike video" aria-pressed={state.vote === 'dislike'} onClick={() => state.voteFor('dislike')} className="h-10 px-3 text-white hover:text-accent aria-pressed:text-accent disabled:opacity-40"><ThumbsDown size={16} /></button>
+        <button disabled={!state.ready || state.busy} aria-label="Dislike video" aria-pressed={state.vote === 'dislike'} onClick={() => state.voteFor('dislike')} className="h-10 max-sm:min-h-11 max-sm:min-w-11 px-3 text-white hover:text-accent aria-pressed:text-accent disabled:opacity-40"><ThumbsDown size={16} /></button>
       </div>
       <button aria-expanded={tab === 'comments'} aria-controls="video-comments" className={action} onClick={() => { setTab(tab === 'comments' ? null : 'comments'); if (!loaded && !loading) void loadComments(); }}><MessageSquare size={16} />Comments</button>
       <ShareButton />
       <button aria-expanded={tab === 'about'} aria-controls="video-about" aria-pressed={tab === 'about'} className={action} onClick={() => setTab(tab === 'about' ? null : 'about')}><Info size={16} />About</button>
     </div>
     <p role="status" className="mt-2 text-[11px] text-muted">{state.error}</p>
-    <div id="video-about" hidden={tab !== 'about'} className="mt-4 border-t border-line pt-4 text-[13px] leading-relaxed text-white/70"><p>{description}</p>{bodyText && bodyText !== description && <p className="mt-3 whitespace-pre-wrap">{bodyText}</p>}</div>
+    <div id="video-about" hidden={tab !== 'about'} className="mt-4 border-t border-line pt-4 text-[13px] leading-relaxed text-white/70 [overflow-wrap:anywhere]"><p>{description}</p>{bodyText && bodyText !== description && <p className="mt-3 whitespace-pre-wrap">{bodyText}</p>}</div>
     <div id="video-comments" hidden={tab !== 'comments'} className="mt-4 border-t border-line pt-4 text-[13px] text-white/60">
       {loaded && !comments.length && <p>No comments yet.</p>}
-      {comments.map(comment => <article key={comment.id} className="mb-4"><strong className="text-white">{comment.name}</strong><p className="whitespace-pre-wrap break-words">{comment.text}</p></article>)}
+      {comments.map(comment => <article key={comment.id} className="mb-4"><strong className="text-white [overflow-wrap:anywhere]">{comment.name}</strong><p className="whitespace-pre-wrap break-words">{comment.text}</p></article>)}
       {cursor && <button disabled={loading} className={action} onClick={() => void loadComments(true)}>More comments</button>}
       <form onSubmit={submit} className="mt-4 space-y-3">
-        <label className="block">Name<input required maxLength={80} value={name} onChange={e => { setName(e.target.value); setSubmissionId(null); }} className="mt-1 block w-full rounded-md border border-line bg-card px-3 py-2 text-white" /></label>
-        <label className="block">Comment<textarea required maxLength={2000} rows={3} value={text} onChange={e => { setText(e.target.value); setSubmissionId(null); }} className="mt-1 block w-full rounded-md border border-line bg-card px-3 py-2 text-white" /></label>
-        <button disabled={loading || !state.ready} className={action}>Submit comment</button>
+        <label className="block">Name<input required maxLength={80} value={name} onChange={e => { setName(e.target.value); setSubmissionId(null); }} className="mt-1 block w-full min-w-0 rounded-md border border-line bg-card px-3 py-2 text-white max-sm:text-[16px] max-sm:min-h-11" /></label>
+        <label className="block">Comment<textarea required maxLength={2000} rows={3} value={text} onChange={e => { setText(e.target.value); setSubmissionId(null); }} className="mt-1 block w-full min-w-0 rounded-md border border-line bg-card px-3 py-2 text-white max-sm:text-[16px] max-sm:min-h-11" /></label>
+        <button disabled={loading || !state.ready} className={`${action} max-sm:w-full`}>Submit comment</button>
         <p className="text-[11px] text-muted">Comments appear after approval.</p>
       </form>
       <p role="status" className="mt-2 text-[11px] text-muted">{loading ? 'Loading…' : notice}</p>

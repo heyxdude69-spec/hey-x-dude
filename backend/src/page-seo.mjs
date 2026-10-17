@@ -1,6 +1,6 @@
 const INDEX_ROBOTS = 'index,follow,max-snippet:-1,max-video-preview:-1,max-image-preview:large';
 const siteFor = (config, canonical) => ({ origin: config.siteOrigin || new URL(canonical).origin,
-  ...(config.sitePages?.site || { name: 'Video Catalog', language: 'en' }) });
+  ...(config.sitePages?.site || { name: 'HeyxDude', language: 'en' }) });
 const absolute = (url, origin) => new URL(url, origin).href;
 const validDate = value => value && Number.isFinite(new Date(value).getTime()) ? new Date(value).toISOString() : undefined;
 export function isoDuration(seconds) {

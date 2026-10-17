@@ -1,21 +1,37 @@
 import { randomUUID } from 'node:crypto';
 import { createClient } from 'redis';
 
+export function redisFailureHint(error) {
+  const message = String(error?.message || '').toLowerCase();
+  const code = String(error?.code || '');
+  if (/wrongpass|noauth|authentication|invalid username.password/.test(message)) return 'authentication failed; use the TCP read/write username and password';
+  if (['ENOTFOUND', 'EAI_AGAIN'].includes(code)) return 'DNS lookup failed; check the Redis endpoint';
+  if (code === 'ECONNREFUSED') return 'connection refused; check endpoint and port';
+  if (code === 'ETIMEDOUT' || /timeout|timed out/.test(message)) return 'connection timed out; check network access, TLS and port';
+  if (/tls|ssl|certificate/.test(message) || ['ERR_SSL_WRONG_VERSION_NUMBER', 'CERT_HAS_EXPIRED'].includes(code)) return 'TLS connection failed; copy the Upstash rediss:// TCP URL';
+  return 'connection failed; verify the complete TCP URL, password, TLS and database availability';
+}
+
 export class CatalogCache {
-  constructor(config) {
+  constructor(config, clientFactory = createClient) {
+    this.clientFactory = clientFactory;
     this.config = config; this.entries = new Map(); this.bytes = 0; this.flights = new Map();
     this.prefix = config.cacheNamespace || 'catalog';
     this.localEpoch = 1; this.stats = { hits: 0, misses: 0, loads: 0, invalidations: 0 };
   }
   async connect() {
     if (!this.config.redisUrl) return;
-    this.redis = createClient({ url: this.config.redisUrl, disableOfflineQueue: true,
-      socket: { connectTimeout: 1500, reconnectStrategy: retries => retries < 3 ? Math.min(200 * (retries + 1), 1000) : false } });
-    this.redis.on('error', () => {});
+    let parsed;
+    try { parsed = new URL(this.config.redisUrl); } catch { throw new Error('Invalid REDIS_URL; copy the full Redis TCP connection URL'); }
+    if (!['redis:', 'rediss:'].includes(parsed.protocol)) throw new Error('REDIS_URL must be redis:// or rediss://; an HTTPS REST endpoint is not supported');
+    let lastError;
+    this.redis = this.clientFactory({ url: this.config.redisUrl, disableOfflineQueue: true,
+      socket: { connectTimeout: 10000, reconnectStrategy: retries => retries < 3 ? Math.min(200 * (retries + 1), 1000) : false } });
+    this.redis.on('error', error => { lastError = error; });
     try { await this.redis.connect(); }
     catch (error) {
       if (this.redis.isOpen) this.redis.destroy();
-      if (this.config.mode === 'production') throw new Error('Redis unavailable; production startup cancelled');
+      if (this.config.mode === 'production') throw new Error(`Redis unavailable; production startup cancelled: ${redisFailureHint(lastError || error)}`);
       console.warn('Redis unavailable; using bounded local cache.');
     }
   }

@@ -5,7 +5,7 @@ import { getHome, HomeCollectionNotFound } from '@/lib/home-api';
 import { siteOrigin } from '@/lib/video-api';
 import type { Metadata } from 'next';
 
-export const dynamic = 'force-dynamic';
+// Request rendering is controlled by the root layout; public fetches have bounded TTLs.
 const loadHome = cache(getHome);
 type Props = { searchParams: Promise<{ section?: string; page?: string }> };
 const pageNumber = (value?: string) => { const page = Number(value || 1); return Number.isSafeInteger(page) && page >= 1 && page <= 500 ? page : 1; };

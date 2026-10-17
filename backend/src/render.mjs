@@ -5,7 +5,7 @@ export const safeJson = value => JSON.stringify(value).replace(/</g, '\\u003c').
 function frame(body, options) {
   const metadata = options.seo;
   const { title, description = '', canonical, language = 'en', thumbnail, robots = 'index,follow', schema, adult = false,
-    siteName = 'Video Catalog', openGraph, twitter } = metadata ? { ...options, title: metadata.title, description: metadata.description,
+    siteName = 'HeyxDude', openGraph, twitter } = metadata ? { ...options, title: metadata.title, description: metadata.description,
     canonical: metadata.canonicalUrl, language: metadata.language, robots: metadata.robots, schema: metadata.structuredData,
     adult: metadata.adult, siteName: metadata.siteName, openGraph: metadata.openGraph, twitter: metadata.twitter } : options;
   const images = openGraph?.images || (thumbnail ? [{ url: thumbnail, alt: title }] : []);
@@ -72,7 +72,7 @@ export function renderListing(result, config, { tag, rating = 'general' } = {}) 
   return frame(`<h1>${tag ? `Videos tagged ${escapeHtml(tag)}` : 'Video catalog'}</h1>
 ${result.videos.length ? cards(result.videos) : '<p>No published videos yet. Add video metadata and a ready source, then publish it through the admin API.</p>'}
 ${next ? `<a class="next" href="${escapeHtml(next)}">Next videos</a>` : ''}`, {
-    title: tag ? `${tag} videos` : 'Video Catalog', description: 'Browse video watch pages.', canonical: `${config.siteOrigin}/`,
+    title: tag ? `${tag} videos` : 'HeyxDude', description: 'Browse video watch pages on HeyxDude.', canonical: `${config.siteOrigin}/`,
     robots: tag || next || rating !== 'general' ? 'noindex,follow' : 'index,follow', adult: rating === 'adult',
   });
 }

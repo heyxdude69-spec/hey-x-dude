@@ -1,15 +1,15 @@
 {
   "site": {
-    "name": "Video Catalog",
+    "name": "HeyxDude",
     "language": "en-US"
   },
   "categories": {
     "h1": "Video Categories",
-    "description": "Explore the video catalog by topic. Choose a category to browse its videos and open an individual watch page.",
-    "bodyText": "Each category brings together videos on a shared topic. Browse the categories below to find the subjects you want to watch.",
+    "description": "Explore video categories on HeyxDude. Choose a category to browse related videos and open an individual watch page.",
+    "bodyText": "Browse HeyxDude categories to find videos grouped by topic, then open any video for details and available players.",
     "seo": {
-      "title": "Video Categories | Video Catalog",
-      "metaDescription": "Browse the video catalog by category. Explore topics, discover matching videos and open individual video watch pages.",
+      "title": "Video Categories | HeyxDude",
+      "metaDescription": "Browse video categories on HeyxDude. Explore topics, discover related videos and open individual watch pages.",
       "targetKeyword": "video categories",
       "indexAllowed": true
     }

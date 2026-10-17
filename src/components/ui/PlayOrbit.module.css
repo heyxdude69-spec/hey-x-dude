@@ -1,0 +1,22 @@
+.loader { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; padding: 48px 20px; overflow: hidden; }
+.scene { position: relative; width: min(100%, 560px); isolation: isolate; }
+.glow { position: absolute; z-index: -1; inset: -20%; background: radial-gradient(ellipse, #9900ff20, #ed145b12 35%, transparent 65%); pointer-events: none; }
+.logo { display: block; width: 100%; height: auto; object-fit: contain; animation: breathe 3s ease-in-out infinite; }
+.track { position: relative; width: 62%; height: 9px; margin: 26px auto 0; overflow: hidden; border: 1px solid #c36bff66; border-radius: 999px; background: #22102d; box-shadow: 0 0 12px #ab00ff22; }
+.beam { position: absolute; inset-block: 0; left: 0; width: 45%; border-radius: inherit; background: linear-gradient(90deg, #ff008b, #a000ff 70%, #ffc7ff); box-shadow: 0 0 10px #ff00c8; animation: sweep 1.8s ease-in-out infinite alternate; }
+.label { display: flex; align-items: center; justify-content: center; gap: 10px; max-width: 100%; margin: 22px 0 0; color: #cba1ef; font-size: 11px; line-height: 1.6; letter-spacing: 4px; text-transform: uppercase; text-align: center; overflow-wrap: anywhere; }
+.dots { display: inline-flex; gap: 5px; flex-shrink: 0; }
+.dots i { width: 4px; height: 4px; border-radius: 50%; background: #e76dff; box-shadow: 0 0 6px #d800ff; animation: dot 1.4s ease-in-out infinite; }
+.dots i:nth-child(2) { animation-delay: .18s; }
+.dots i:nth-child(3) { animation-delay: .36s; }
+.compact { padding: 16px 16px 24px; }
+.compact .scene { width: 220px; }
+.compact .track { height: 5px; margin-top: 12px; }
+.compact .label { margin-top: 12px; font-size: 10px; letter-spacing: 1.5px; }
+@keyframes sweep { from { transform: translateX(-100%); } to { transform: translateX(225%); } }
+@keyframes breathe { 0%,100% { opacity: .88; transform: scale(.985); } 50% { opacity: 1; transform: scale(1); } }
+@keyframes dot { 0%,100% { opacity: .35; } 50% { opacity: 1; } }
+@media (max-width: 700px) { .loader { padding: 32px 12px; } .compact { padding: 12px 12px 24px; } .label { letter-spacing: 2px; } }
+@media (prefers-reduced-motion: reduce) { .logo, .beam, .dots i { animation: none; } .beam { left: 25%; } }
+
+.loader[data-brand-loader="fullscreen"] { position: fixed; inset: 0; z-index: 200; min-height: 100dvh; background: #08040f; padding: max(24px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); }

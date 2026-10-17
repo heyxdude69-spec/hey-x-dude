@@ -70,7 +70,7 @@ export async function getCategoryVideos(slug: string, page: number): Promise<Cat
   const url = new URL(`/api/categories/${slug}/videos`, origin);
   url.searchParams.set('page', String(page));
   url.searchParams.set('limit', '25');
-  const response = await fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(8000),
+  const response = await fetch(url, { cache: 'force-cache', next: { revalidate: 60 }, signal: AbortSignal.timeout(8000),
     headers: process.env.INTERACTION_PROXY_SECRET ? { 'X-Interaction-Secret': process.env.INTERACTION_PROXY_SECRET } : undefined });
   if (response.status === 404) throw new CategoryNotFound();
   if (!response.ok) throw new Error(`Category videos API unavailable (${response.status})`);
