@@ -15,6 +15,13 @@ function safePosterUrl(value) {
   try { const url = new URL(value); return url.protocol === 'https:' && !url.username && !url.password; }
   catch { return false; }
 }
+function posterUrl(source) {
+  if (source.provider === 'voe') {
+    const match = source.embedUrl?.match(/^https:\/\/(?:www\.)?voe\.sx\/(?:e|f)\/([a-z0-9_-]{6,64})(?:[/?#]|$)/i);
+    if (match) return `https://i.voe.sx/cache/${match[1]}_storyboard_L3.jpg`;
+  }
+  return source.providerMetadata?.posterUrl;
+}
 export function orderSources(sources, config) {
   return sources.filter(source => usableSource(source, config)).sort((a, b) =>
     a.priority - b.priority || String(a._id).localeCompare(String(b._id)));
@@ -56,13 +63,13 @@ export function makeCatalog(database, cache, config) {
     const ids = new Set(videos.map(video => String(video._id)));
     const sources = sourceRows || await query(VideoSource.find({
       videoId: { $in: videos.map(video => video._id) }, enabled: true, status: 'ready',
-      availability: { $ne: 'unavailable' }, 'providerMetadata.posterUrl': { $regex: '^https://' },
+      availability: { $ne: 'unavailable' },
       $or: approvedSourceClauses,
     }).select('videoId provider kind embedUrl contentUrl priority providerMetadata.posterUrl').sort({ priority: 1, _id: 1 }).lean());
     const posters = new Map(), ordered = [...sources].sort((a, b) =>
-      Number(b.provider === 'playmate') - Number(a.provider === 'playmate') || a.priority - b.priority || String(a._id).localeCompare(String(b._id)));
+      Number(b.provider === 'voe') - Number(a.provider === 'voe') || a.priority - b.priority || String(a._id).localeCompare(String(b._id)));
     for (const source of ordered) {
-      const id = String(source.videoId), url = source.providerMetadata?.posterUrl;
+      const id = String(source.videoId), url = posterUrl(source);
       if (!ids.has(id) || !usableSource(source, config) || !safePosterUrl(url)) continue;
       const rows = posters.get(id) || [];
       if (!rows.some(row => row.provider === source.provider) && rows.length < 5) rows.push({ provider: source.provider, url });
@@ -70,9 +77,10 @@ export function makeCatalog(database, cache, config) {
     }
     return videos.map(video => {
       const rows = posters.get(String(video._id)) || [], current = video.thumbnail?.url || '';
-      const url = current || rows[0]?.url || '';
+      const voePoster = rows.find(row => row.provider === 'voe')?.url;
+      const url = voePoster || current || rows[0]?.url || '';
       const host = value => { try { return new URL(value).hostname; } catch { return ''; } };
-      const primaryHost = host(url), fallbackUrls = [...new Set(rows.map(row => row.url)
+      const primaryHost = host(url), fallbackUrls = [...new Set([...rows.map(row => row.url), ...(voePoster && current ? [current] : [])]
         .filter(candidate => candidate !== url && host(candidate) !== primaryHost))];
       if (!url) return video;
       const thumbnail = { ...video.thumbnail, url, alt: video.thumbnail?.alt || video.title || '' };
