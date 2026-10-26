@@ -3,7 +3,7 @@ import { formatDuration } from '@/lib/format-duration';
 import { Eye, ThumbsUp } from 'lucide-react';
 import Link from 'next/link';
 type CardData = {
-  id: number | string; slug: string; title: string; thumbnail: string; thumbnailAlt?: string;
+  id: number | string; slug: string; title: string; thumbnail: string; thumbnailAlt?: string; thumbnailFallbacks?: string[];
   movie: string; genre: string; duration: number | null; views: string; rating: number | null; quality: string;
 };
 
@@ -13,7 +13,7 @@ export default function FilmCard({ film, compact = false, compactOnMobile = fals
     <article id={`film-${film.id}`} className={`${compactOnMobile ? "max-sm:[&_h3]:truncate max-sm:[&_h3]:mb-0 max-sm:[&_h3+div]:hidden max-sm:[&_.badge:not([aria-label])]:hidden" : ""} ${recommended ? "ring-1 ring-accent/60 hover:shadow-[0_0_16px_#ed145b22]" : ""} relative scroll-mt-[25px] overflow-hidden border border-[#7b539225] bg-card group transition-colors duration-200 hover:border-accent target:outline-2 target:outline-offset-4 target:outline-accent [container-type:inline-size]`}>
       <Link href={`/${film.slug}`} aria-label={`View ${film.title}`} className="absolute inset-0 z-10 focus-visible:outline-offset-[-2px]" />
       <div className="relative aspect-video overflow-hidden bg-card">
-        <CategoryPoster priority={priority} url={film.thumbnail} alt={film.thumbnailAlt || `${film.movie} — ${film.title}`} sizes="(max-width: 700px) 50vw, (max-width: 1000px) 25vw, 280px" />
+        <CategoryPoster priority={priority} url={film.thumbnail} fallbackUrls={film.thumbnailFallbacks} alt={film.thumbnailAlt || `${film.movie} — ${film.title}`} sizes="(max-width: 700px) 50vw, (max-width: 1000px) 25vw, 280px" />
         {recommended && <span className="absolute top-1.5 left-1.5 max-w-[calc(100%-12px)] truncate rounded border border-pink-300/30 bg-gradient-to-r from-[#b50c51] to-[#7022a7] px-1.5 py-1 text-[clamp(8px,3.8cqi,11px)] font-bold leading-tight text-white shadow-md">heyXdude Pick <span aria-hidden="true">??</span></span>}
         {!compact && <span className="badge absolute bottom-2 left-2 bg-black/75 text-[clamp(8px,3.5cqi,11px)] max-sm:bottom-1 max-sm:left-1">{film.genre}</span>}
         <span className="badge absolute right-2 bottom-2 bg-black/85 font-medium text-[clamp(8px,3.5cqi,11px)] max-sm:right-1 max-sm:bottom-1" aria-label={`Duration ${duration}`}>{duration}</span>

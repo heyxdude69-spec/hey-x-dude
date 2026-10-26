@@ -176,7 +176,7 @@ export default function Navbar({ categories }: { categories: NavigationCategory[
             </div>}
             {results.map(film => (
               <Link key={film.id} href={`/${film.slug}`} onClick={() => setOpen(null)} className="flex min-h-11 items-center gap-3 border-b border-line py-3 text-white transition-colors hover:text-accent">
-                <div className="relative h-[45px] w-20 shrink-0 overflow-hidden rounded-[3px]"><CategoryPoster url={film.thumbnail} alt="" sizes="80px" /></div>
+                <div className="relative h-[45px] w-20 shrink-0 overflow-hidden rounded-[3px]"><CategoryPoster url={film.thumbnail} fallbackUrls={film.thumbnailFallbacks} alt="" sizes="80px" /></div>
                 <span className="min-w-0 flex-1">
                   <strong className="line-clamp-2 text-[13px] font-medium leading-snug [overflow-wrap:anywhere]">{film.title}</strong>
                   <small className="mt-1 block text-[12px] [overflow-wrap:anywhere] text-[#8e7e9f]">{film.category}{film.category && film.language && <span className="mx-[5px]">·</span>}{film.language}</small>

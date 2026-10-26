@@ -5,7 +5,7 @@ import { AlertCircle, LoaderCircle, RotateCw, Play } from 'lucide-react';
 import CategoryPoster from './CategoryPoster';
 type VideoServer = { id?: string; provider: string; embedUrl: string; kind?: 'embed' | 'direct' };
 
-export default function EmbedPlayer({ title, servers, poster }: { title: string; servers: VideoServer[]; poster?: string }) {
+export default function EmbedPlayer({ title, servers, poster, posterFallbacks }: { title: string; servers: VideoServer[]; poster?: string; posterFallbacks?: string[] }) {
   const [active, setActive] = useState(0);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [attempt, setAttempt] = useState(0);
@@ -52,7 +52,7 @@ export default function EmbedPlayer({ title, servers, poster }: { title: string;
         {started && embedUrl && status !== 'error' && servers[active]?.kind === 'direct' && <video key={`${active}-${attempt}`} src={embedUrl} controls preload="metadata" className="absolute inset-0 h-full w-full" aria-label={title}
           onLoadedMetadata={event => { setStatus('ready'); if (playback.current.time < event.currentTarget.duration) event.currentTarget.currentTime = playback.current.time; }}
           onTimeUpdate={event => { playback.current = { time: event.currentTarget.currentTime, playing: !event.currentTarget.paused }; }} onError={fail} />}
-        {!started && embedUrl && <button onClick={() => setStarted(true)} className="absolute inset-0 z-10 flex h-full w-full items-center justify-center focus-visible:outline-offset-[-4px]" aria-label={`Play ${title}`}><CategoryPoster url={poster} alt="" priority sizes="(max-width: 700px) 100vw, 1000px" /><span className="absolute inset-0 bg-black/25" /><span className="relative grid size-16 place-items-center rounded-full border border-white/40 bg-accent text-white shadow-lg transition-transform hover:scale-105 motion-reduce:transition-none max-sm:size-14"><Play size={28} fill="currentColor" aria-hidden="true" /></span></button>}
+        {!started && embedUrl && <button onClick={() => setStarted(true)} className="absolute inset-0 z-10 flex h-full w-full items-center justify-center focus-visible:outline-offset-[-4px]" aria-label={`Play ${title}`}><CategoryPoster url={poster} fallbackUrls={posterFallbacks} alt="" priority sizes="(max-width: 700px) 100vw, 1000px" /><span className="absolute inset-0 bg-black/25" /><span className="relative grid size-16 place-items-center rounded-full border border-white/40 bg-accent text-white shadow-lg transition-transform hover:scale-105 motion-reduce:transition-none max-sm:size-14"><Play size={28} fill="currentColor" aria-hidden="true" /></span></button>}
         {(!embedUrl || (started && status !== 'ready')) && <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black p-4 text-center" role="status">
           {embedUrl && status === 'loading' ? <LoaderCircle size={28} className="animate-spin text-accent motion-reduce:animate-none" /> : <AlertCircle size={28} className="text-muted" />}
           <p className="text-[13px] text-white/75">{!embedUrl ? 'This video is currently unavailable.' : status === 'loading' ? `Loading Server ${active + 1}…` : 'The servers could not be loaded. Please try again.'}</p>

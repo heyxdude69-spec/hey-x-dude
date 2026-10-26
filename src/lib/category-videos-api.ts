@@ -1,5 +1,5 @@
 export type CatalogCard = {
-  id: string; slug: string; title: string; thumbnail: string; thumbnailAlt: string;
+  id: string; slug: string; title: string; thumbnail: string; thumbnailAlt: string; thumbnailFallbacks?: string[];
   duration: number | null; views: string; rating: number | null; quality: string;
   genre: string; movie: string;
 };
@@ -18,6 +18,11 @@ function count(value: unknown): number {
   if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 0) throw new Error('Invalid metric');
   return value;
 }
+function safeImage(value: unknown): string | undefined {
+  if (typeof value !== 'string') return;
+  try { const url = new URL(value); return url.protocol === 'https:' && !url.username && !url.password ? url.href : undefined; }
+  catch { return; }
+}
 export function parseCategoryPage(value: unknown): CategoryVideos {
   const data = record(value), category = record(data.category), pagination = record(data.pagination);
   if (typeof category.slug !== 'string' || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(category.slug) ||
@@ -34,14 +39,12 @@ export function parseCategoryPage(value: unknown): CategoryVideos {
         typeof row.title !== 'string' || !row.title.trim()) throw new Error('Invalid video card');
     const likes = count(metrics.likes ?? 0), dislikes = count(metrics.dislikes ?? 0), votes = likes + dislikes;
     let thumbnail = '/thumbnails/scene-1.svg';
-    if (typeof image.url === 'string') {
-      try {
-        const url = new URL(image.url);
-        if (url.protocol === 'https:' && !url.username && !url.password) thumbnail = url.href;
-      } catch { /* Use local placeholder. */ }
-    }
+    thumbnail = safeImage(image.url) || thumbnail;
+    const thumbnailFallbacks = Array.isArray(image.fallbackUrls)
+      ? [...new Set(image.fallbackUrls.slice(0, 5).map(safeImage).filter((url): url is string => !!url && url !== thumbnail))]
+      : [];
     const qualities: Record<string, string> = { sd: 'SD', hd: 'HD', fullhd: 'Full HD', uhd: '4K' };
-    return { id: row.id, slug: row.slug, title: row.title, thumbnail,
+    return { id: row.id, slug: row.slug, title: row.title, thumbnail, ...(thumbnailFallbacks.length ? { thumbnailFallbacks } : {}),
       thumbnailAlt: typeof image.alt === 'string' && image.alt ? image.alt : row.title,
       duration: row.durationSeconds == null ? null : count(row.durationSeconds),
       views: new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 }).format(count(metrics.views ?? 0)),

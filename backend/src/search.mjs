@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { usableSource } from './catalog.mjs';
+import { makeCatalog, usableSource } from './catalog.mjs';
 
 export const SEARCH_INDEX_KEYS = { status: 1, contentRating: 1, title: 'text', tags: 'text', categories: 'text', language: 'text' };
 export const SEARCH_INDEX_OPTIONS = { name: 'catalog_search', default_language: 'none', language_override: 'searchIndexLanguage',
@@ -8,6 +8,7 @@ export function normalizeSearch(value) {
   return String(value).normalize('NFKC').toLowerCase().replace(/[^\p{L}\p{N}\p{M}]+/gu, ' ').trim().replace(/\s+/g, ' ');
 }
 export function makeSearch(database, cache, config) {
+  const catalog = makeCatalog(database, cache, config);
   return async function search(raw, rating, page = null) {
     const text = normalizeSearch(raw);
     if (text && text.length < 2) return { query: text, videos: [], ...(page === null ? {} : { page, hasMore: false }) };
@@ -26,14 +27,15 @@ export function makeSearch(database, cache, config) {
       const rows = page === null ? found : found.slice(0, 48);
       if (!rows.length) return { query: text, videos: [], ...(page === null ? {} : { page, hasMore: false }) };
       const sources = await database.VideoSource.find({ videoId: { $in: rows.map(row => row._id) }, enabled: true, status: 'ready', availability: { $ne: 'unavailable' } })
-        .select('videoId provider kind embedUrl contentUrl enabled status availability').limit(page === null ? 560 : 960).maxTimeMS(config.queryTimeoutMs).lean();
+        .select('videoId provider kind embedUrl contentUrl priority enabled status availability providerMetadata.posterUrl').limit(page === null ? 560 : 960).maxTimeMS(config.queryTimeoutMs).lean();
       const playable = new Set(sources.filter(source => usableSource(source, config)).map(source => String(source.videoId)));
       const selected = rows.filter(row => playable.has(String(row._id))).slice(0, page === null ? 7 : 48);
       const slugs = [...new Set(selected.flatMap(row => row.categories || []))];
       const categories = slugs.length ? await database.Category.find({ slug: { $in: slugs }, status: 'active', contentRating: rating })
         .select('slug name').limit(page === null ? 84 : 576).maxTimeMS(config.queryTimeoutMs).lean() : [];
       const names = new Map(categories.map(row => [row.slug, row.name]));
-      return { query: text, ...(page === null ? {} : { page, hasMore }), videos: selected.map(row => ({ id: String(row._id), slug: row.slug, title: row.title,
+      const prepared = await catalog.withPosterFallback(selected, sources);
+      return { query: text, ...(page === null ? {} : { page, hasMore }), videos: prepared.map(row => ({ id: String(row._id), slug: row.slug, title: row.title,
         thumbnail: row.thumbnail, durationSeconds: row.durationSeconds ?? null, category: (row.categories || []).map(slug => names.get(slug)).find(Boolean) || '', language: row.language || '' })) };
     }, 30);
   };

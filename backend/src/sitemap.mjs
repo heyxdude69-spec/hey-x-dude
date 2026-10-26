@@ -1,10 +1,11 @@
 import { mkdir, open, rename } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import { escapeHtml } from './render.mjs';
-import { usableSource } from './catalog.mjs';
+import { makeCatalog, usableSource } from './catalog.mjs';
 
 export async function buildSitemaps(database, config, directory = 'public/sitemaps') {
   const publicOrigin = config.publicSiteOrigin || config.siteOrigin;
+  const catalog = makeCatalog(database, null, config);
   await mkdir(directory, { recursive: true });
   const generation = `${Date.now()}-${randomUUID().slice(0, 8)}`, chunks = [];
   let file, count = 0, categoryCount = 0, directoryCount = 0, pageCount = 0, fileEntries = 0, fileBytes = 0;
@@ -41,7 +42,7 @@ export async function buildSitemaps(database, config, directory = 'public/sitema
         .sort({ priority: 1, _id: 1 }).lean().maxTimeMS(config.queryTimeoutMs);
       const selected = new Map();
       for (const source of sources) if (usableSource(source, config) && !selected.has(String(source.videoId))) selected.set(String(source.videoId), source);
-      for (const video of batch) {
+      for (const video of await catalog.withPosterFallback(batch, sources)) {
         pageCount++;
         if (selected.has(String(video._id)) && video.uploadDate && video.thumbnail?.url) await write(video, selected.get(String(video._id)));
       }

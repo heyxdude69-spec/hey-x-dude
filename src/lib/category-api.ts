@@ -1,7 +1,7 @@
 export type CategoryCard = {
   slug: string;
   name: string;
-  thumbnail: { url?: string; alt?: string };
+  thumbnail: { url?: string; alt?: string; fallbackUrls?: string[] };
   videoCount: number;
 };
 
@@ -22,8 +22,13 @@ export function mapCategory(value: unknown): CategoryCard {
       if (parsed.protocol === 'https:' && !parsed.username && !parsed.password) url = parsed.href;
     } catch { /* Missing or invalid posters use the local fallback. */ }
   }
+  const fallbackUrls = Array.isArray(image.fallbackUrls) ? [...new Set(image.fallbackUrls.slice(0, 5).flatMap(value => {
+    if (typeof value !== 'string') return [];
+    try { const parsed = new URL(value); return parsed.protocol === 'https:' && !parsed.username && !parsed.password ? [parsed.href] : []; }
+    catch { return []; }
+  }).filter(value => value !== url)] : [];
   return { slug: row.slug, name: row.name, videoCount: row.videoCount,
-    thumbnail: { url, alt: typeof image.alt === 'string' ? image.alt : row.name } };
+    thumbnail: { url, alt: typeof image.alt === 'string' ? image.alt : row.name, ...(fallbackUrls.length ? { fallbackUrls } : {}) } };
 }
 
 // Called only from the server-rendered categories page. No credentials in the browser.

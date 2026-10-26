@@ -81,7 +81,8 @@ export function makeHome(database, cache, config, Settings = homeModel(database.
       const ready = new Set(sources.map(row => String(row._id))), eligible = candidates.filter(row => ready.has(String(row._id)));
       const pageCount = section.paginate ? Math.max(1, Math.ceil(eligible.length / section.limit)) : 1;
       const currentPage = Math.min(page, pageCount), start = section.paginate ? (currentPage - 1) * section.limit : 0;
-      const videos = eligible.slice(start, start + section.limit).map(row => ({ ...catalog.card(row), categories: row.categories || [] }));
+      const rows = eligible.slice(start, start + section.limit), cards = await catalog.cards(rows);
+      const videos = cards.map((card, index) => ({ ...card, categories: rows[index].categories || [] }));
       return { ...section, videos, pagination: { currentPage, pageCount }, seeMoreUrl: section.type === 'category' ? `/categories/${section.categorySlug}` : section.type === 'quality' ? `/collections/${section.key}` : `/?section=${section.key}` };
     });
   }
@@ -101,7 +102,8 @@ export function makeHome(database, cache, config, Settings = homeModel(database.
       const total = result[0]?.total[0]?.count || 0;
       const pageCount = Math.max(1, Math.ceil(total / size));
       if (page > pageCount) throw new HttpError(404, 'Collection page not found');
-      return { ...section, paginate: true, videos: (result[0]?.rows || []).map(row => ({ ...catalog.card(row), categories: row.categories || [] })),
+      const rows = result[0]?.rows || [], cards = await catalog.cards(rows);
+      return { ...section, paginate: true, videos: cards.map((card, index) => ({ ...card, categories: rows[index].categories || [] })),
         pagination: { currentPage: page, pageCount }, seeMoreUrl: `/collections/${section.key}` };
     });
   }
