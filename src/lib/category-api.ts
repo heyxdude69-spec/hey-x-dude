@@ -26,7 +26,7 @@ export function mapCategory(value: unknown): CategoryCard {
     if (typeof value !== 'string') return [];
     try { const parsed = new URL(value); return parsed.protocol === 'https:' && !parsed.username && !parsed.password ? [parsed.href] : []; }
     catch { return []; }
-  }).filter(value => value !== url)] : [];
+  }).filter(value => value !== url))] : [];
   return { slug: row.slug, name: row.name, videoCount: row.videoCount,
     thumbnail: { url, alt: typeof image.alt === 'string' ? image.alt : row.name, ...(fallbackUrls.length ? { fallbackUrls } : {}) } };
 }
