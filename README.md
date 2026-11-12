@@ -25,6 +25,12 @@ Requires Node.js 22.14+ and a MongoDB replica set such as Atlas for transactiona
 
 Never expose MongoDB credentials, provider keys or the proxy secret through `NEXT_PUBLIC_` environment variables. Never commit real `.env` files.
 
+## Private admin panel
+
+The Next.js console is available at `/dude-admin`. Configure these server-only values in `.env.local` (and in the frontend deployment): `ADMIN_PANEL_PASSWORD`, `ADMIN_PANEL_SESSION_SECRET` (random, at least 32 characters), and `CATALOG_ADMIN_API_TOKEN` (the same value as the backend's `ADMIN_API_TOKEN`). The panel uses an eight-hour HttpOnly, SameSite=Strict session and proxies only the existing admin API routes. Never add these values to `NEXT_PUBLIC_` variables.
+
+The panel creates catalog drafts, manages categories, attaches provider embed/direct URLs, and publishes only through backend validation. Media upload/FFmpeg processing is not part of the deployed backend today; use the private upload CLI/worker for provider transfers, then manage the resulting catalog record in the panel.
+
 Existing catalog and `homepage_settings` data remain in Atlas. Database setup creates schema/index infrastructure; it does not seed homepage sections or publish videos. Use the private local admin tools to maintain that data and approve pending comments.
 
 ## Connected behavior

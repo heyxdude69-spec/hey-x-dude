@@ -50,3 +50,8 @@ body:has(main[aria-busy="true"]) > header,
 body:has(main[aria-busy="true"]) > footer,
 body:has([data-brand-loader="fullscreen"]) > header,
 body:has([data-brand-loader="fullscreen"]) > footer { visibility: hidden; }
+
+/* The private admin console has its own navigation and full-height shell. */
+body:has([data-admin-app]) { padding-top: 0 !important; }
+body:has([data-admin-app]) > header,
+body:has([data-admin-app]) > footer { display: none; }

@@ -183,6 +183,16 @@ export function createApp({ database, cache, config, logRequests = true }) {
     next();
   });
   app.get('/api/admin/stats', (_req, res) => res.json({ activeRequests: active, cache: cache.mode, cacheStats: cache.stats }));
+  app.get('/api/admin/categories', async (req, res) => {
+    const options = z.object({ status: z.enum(['draft', 'active', 'archived']).optional(),
+      rating: z.enum(['general', 'adult']).optional() }).strict().parse(req.query);
+    const categories = await database.Category.find({
+      ...(options.status ? { status: options.status } : {}),
+      ...(options.rating ? { contentRating: options.rating } : {}),
+    }).select('slug name description h1 language seo thumbnail contentRating status createdAt updatedAt')
+      .sort({ slug: 1 }).limit(250).maxTimeMS(config.queryTimeoutMs).lean();
+    res.json({ categories });
+  });
   app.post('/api/admin/categories', async (req, res) => {
     const category = await database.Category.create(categoryCreate.parse(req.body));
     await cache.invalidate(); res.status(201).json({ category });
