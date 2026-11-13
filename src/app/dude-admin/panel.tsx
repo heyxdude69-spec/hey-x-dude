@@ -343,6 +343,7 @@ export default function DudeAdminPanel() {
                 <Field label="Tags" wide hint="Choose from tags already used in the catalog"><div className={styles.categoryChoices}>{availableTags.length ? availableTags.map(tag => <label className={styles.checkChoice} key={tag}><input type="checkbox" checked={videoDraft.tags.includes(tag)} onChange={e => setVideoDraft({ ...videoDraft, tags: e.target.checked ? [...videoDraft.tags, tag] : videoDraft.tags.filter(value => value !== tag) })} /><span>{tag}</span></label>) : <span className={styles.emptyHint}>No tags in the loaded catalog yet.</span>}</div></Field>
               </div>
             </section>
+            </fieldset>
             <aside className={styles.editorAside}>
               <section className={styles.panel}><div className={styles.sectionTitle}><div className={`${styles.sectionIcon} ${styles.pinkIcon}`}><Upload size={18} /></div><div><h2>Thumbnail & SEO</h2><p>Required before publishing</p></div></div>
                 <Field label="Public thumbnail URL" hint="HTTPS image URL"><input type="url" value={videoDraft.thumbnailUrl} onChange={e => setVideoDraft({ ...videoDraft, thumbnailUrl: e.target.value })} placeholder="https://…" /></Field>
@@ -350,7 +351,6 @@ export default function DudeAdminPanel() {
                 <div className={styles.fieldGap}><Field label="SEO description"><textarea rows={3} maxLength={1000} value={videoDraft.seoDescription} onChange={e => setVideoDraft({ ...videoDraft, seoDescription: e.target.value })} placeholder="Short search description" /></Field></div>
               </section>
               <section className={`${styles.panel} ${styles.reviewNote}`}><ShieldCheck size={18} /><div><b>Saved as a draft</b><p>Nothing is public until you attach a verified provider source and choose Publish.</p></div></section>
-            </fieldset>
               {uploadProgress !== null && <div className={styles.uploadProgress} role="status"><span>Uploading… {uploadProgress}%</span><progress max="100" value={uploadProgress} /></div>}
               <button className={styles.primaryButton} disabled={busy || !uploadFile || !videoDraft.providers.length || !videoDraft.categories.length || !videoDraft.title || !videoDraft.description}>{busy ? <><RefreshCw size={15} className={styles.spin} /> {uploadProgress === null ? 'Preparing…' : `Uploading ${uploadProgress}%`}</> : draftVideoId ? 'Retry upload' : 'Create draft & upload'} <ArrowRight size={16} /></button>
             </aside>
