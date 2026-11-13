@@ -13,6 +13,14 @@ import { buildDirectorySeo, buildCategorySeo, buildVideoSeo } from './page-seo.m
 import { makeInteractions } from './interactions.mjs';
 import { makeHome } from './home.mjs';
 import { makeSearch } from './search.mjs';
+import { adminConfig, UPLOAD_PROVIDERS, safeError } from './admin-upload/config.mjs';
+import { ProviderClient } from './admin-upload/providers.mjs';
+import { createWriteStream } from 'node:fs';
+import { mkdtemp, open, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { Transform } from 'node:stream';
+import { pipeline } from 'node:stream/promises';
 
 export function createApp({ database, cache, config, logRequests = true }) {
   const app = express(), catalog = makeCatalog(database, cache, config), limiter = new RequestLimiter(cache, config);
@@ -230,6 +238,50 @@ export function createApp({ database, cache, config, logRequests = true }) {
     if (input.status === 'published') throw new HttpError(409, 'Create a draft, add a ready source, then publish');
     const video = await database.Video.create(input); await cache.invalidate();
     res.status(201).json({ video });
+  });
+  app.post('/api/admin/uploads', async (req, res) => {
+    let metadata;
+    try { metadata = JSON.parse(req.get('X-Upload-Metadata') || '{}'); } catch { throw new HttpError(400, 'Invalid upload metadata'); }
+    const input = z.object({ videoId: z.string().regex(/^[a-f0-9]{24}$/),
+      providers: z.array(z.enum(UPLOAD_PROVIDERS)).min(1).max(4) }).strict().parse(metadata);
+    if (new Set(input.providers).size !== input.providers.length) throw new HttpError(400, 'Duplicate upload provider');
+    const video = await database.Video.findById(input.videoId).select('title description contentRating tags status').maxTimeMS(config.queryTimeoutMs);
+    if (!video || video.status !== 'draft') throw new HttpError(409, 'Upload requires an existing draft video');
+    const fileName = req.get('X-Upload-Filename') || '';
+    if (fileName.length > 255 || !/\.mp4$/i.test(fileName)) throw new HttpError(400, 'Select an MP4 video file');
+    const uploadConfig = adminConfig({ ...process.env }), settings = uploadConfig.providers;
+    for (const provider of input.providers) if (!settings[provider].apiKey) throw new HttpError(503, `${provider} upload is not configured on the server`);
+    const maxBytes = uploadConfig.maxBytes, declared = Number(req.get('content-length') || 0);
+    if (declared > maxBytes) throw new HttpError(413, 'Video exceeds the configured upload size limit');
+    const directory = await mkdtemp(join(tmpdir(), 'catalog-upload-')), file = join(directory, 'video.mp4');
+    try {
+      let bytes = 0;
+      await pipeline(req, new Transform({ transform(chunk, _encoding, callback) {
+        bytes += chunk.length;
+        callback(bytes > maxBytes ? Object.assign(new Error('Video exceeds the configured upload size limit'), { status: 413 }) : null, chunk);
+      } }), createWriteStream(file, { flags: 'wx' }));
+      if (!bytes) throw new HttpError(400, 'Select a video file');
+      const handle = await open(file, 'r'), signature = Buffer.alloc(8);
+      try { await handle.read(signature, 0, signature.length, 0); } finally { await handle.close(); }
+      if (signature.toString('ascii', 4, 8) !== 'ftyp') throw new HttpError(400, 'The selected file is not a valid MP4 video');
+      const results = [];
+      for (const provider of input.providers) {
+        try {
+          const client = new ProviderClient(settings[provider]);
+          const upload = await client.upload(file, video, uploadConfig.timeoutMs);
+          let info = {};
+          try { info = await client.info(upload.code); } catch {}
+          let embedUrl;
+          try { embedUrl = client.embed(upload, info); } catch {}
+          results.push({ provider, code: upload.code, embedUrl, status: info.status || 'processing',
+            thumbnailUrl: info.metadata?.posterUrl || '' });
+        } catch (error) {
+          results.push({ provider, error: error.uncertain ? 'Upload outcome is uncertain; check the provider dashboard before retrying.' : safeError(error, [settings[provider].apiKey]),
+            uncertain: error.uncertain === true });
+        }
+      }
+      res.json({ results });
+    } finally { await rm(directory, { recursive: true, force: true }); }
   });
   app.patch('/api/admin/videos/:id', async (req, res) => {
     if (!requireId(req.params.id)) throw new HttpError(400, 'Invalid video ID');

@@ -12,6 +12,7 @@ const allowed = [
   /^videos\/[a-f0-9]{24}$/,
   /^videos\/[a-f0-9]{24}\/sources$/,
   /^sources\/[a-f0-9]{24}$/,
+  /^uploads$/,
 ];
 
 export async function GET(request: NextRequest, context: { params: Promise<{ path: string[] }> }) {
@@ -47,8 +48,17 @@ async function forward(request: NextRequest, context: { params: Promise<{ path: 
   const target = new URL(`/api/admin/${resource}`, base);
   target.search = request.nextUrl.search;
   const headers = new Headers({ Authorization: `Bearer ${token}`, Accept: 'application/json' });
-  let body: string | undefined;
-  if (method === 'POST' || method === 'PATCH') {
+  let body: string | ReadableStream<Uint8Array> | undefined;
+  const isUpload = resource === 'uploads' && method === 'POST';
+  if (isUpload) {
+    const length = Number(request.headers.get('content-length') || 0);
+    if (!length || length > 5 * 1024 ** 3) return NextResponse.json({ error: 'Video is empty or exceeds the 5 GB limit' }, { status: 413 });
+    body = request.body || undefined;
+    headers.set('Content-Type', 'application/octet-stream');
+    headers.set('Content-Length', String(length));
+    headers.set('X-Upload-Metadata', request.headers.get('X-Upload-Metadata') || '{}');
+    headers.set('X-Upload-Filename', request.headers.get('X-Upload-Filename') || '');
+  } else if (method === 'POST' || method === 'PATCH') {
     const length = Number(request.headers.get('content-length') || 0);
     if (length > 160_000) return NextResponse.json({ error: 'Request is too large' }, { status: 413 });
     body = await request.text();
@@ -56,7 +66,8 @@ async function forward(request: NextRequest, context: { params: Promise<{ path: 
     headers.set('Content-Type', 'application/json');
   }
   try {
-    const upstream = await fetch(target, { method, headers, body, cache: 'no-store', signal: AbortSignal.timeout(15_000) });
+    const upstream = await fetch(target, { method, headers, body, cache: 'no-store', signal: AbortSignal.timeout(isUpload ? 7_200_000 : 15_000),
+      ...(isUpload ? { duplex: 'half' } as RequestInit & { duplex: 'half' } : {}) });
     const responseBody = await upstream.text();
     return new NextResponse(responseBody, { status: upstream.status, headers: {
       'Cache-Control': 'no-store', 'Content-Type': upstream.headers.get('content-type') || 'application/json',

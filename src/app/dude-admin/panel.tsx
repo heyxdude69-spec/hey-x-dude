@@ -9,7 +9,8 @@ type VideoRow = { _id: string; slug: string; title: string; status: 'draft' | 'p
 type Category = { _id: string; slug: string; name: string; description?: string; seo?: { title?: string; metaDescription?: string }; contentRating: 'general' | 'adult'; status: 'draft' | 'active' | 'archived' };
 type Source = { _id: string; provider: string; externalVideoId: string; kind: 'embed' | 'direct'; embedUrl?: string; contentUrl?: string; status: string; enabled: boolean; priority: number };
 type VideoDetails = VideoRow & { description?: string; h1?: string; thumbnail?: { url?: string; alt?: string }; uploadDate?: string; contentRating?: string; categories?: string[]; seo?: { title?: string; metaDescription?: string }; sources: Source[] };
-type VideoDraft = { title: string; slug: string; description: string; uploadDate: string; contentRating: 'general' | 'adult'; categories: string[]; tags: string[]; provider: string; thumbnailUrl: string; seoTitle: string; seoDescription: string };
+type VideoDraft = { title: string; slug: string; description: string; uploadDate: string; contentRating: 'general' | 'adult'; categories: string[]; tags: string[]; providers: string[]; thumbnailUrl: string; seoTitle: string; seoDescription: string };
+type UploadResult = { provider: string; code?: string; embedUrl?: string; status?: string; thumbnailUrl?: string; error?: string; uncertain?: boolean };
 type SourceDraft = { provider: string; externalVideoId: string; kind: 'embed' | 'direct'; url: string; status: 'processing' | 'ready' };
 
 const menu: { name: Tab; icon: typeof LayoutDashboard; hint: string }[] = [
@@ -18,7 +19,7 @@ const menu: { name: Tab; icon: typeof LayoutDashboard; hint: string }[] = [
   { name: 'Add video', icon: Plus, hint: 'Create and connect a video' },
   { name: 'Categories', icon: Tags, hint: 'Organize the catalog' },
 ];
-const blankVideo: VideoDraft = { title: '', slug: '', description: '', uploadDate: '', contentRating: 'general', categories: [], tags: [], provider: 'voe', thumbnailUrl: '', seoTitle: '', seoDescription: '' };
+const blankVideo: VideoDraft = { title: '', slug: '', description: '', uploadDate: '', contentRating: 'general', categories: [], tags: [], providers: ['voe'], thumbnailUrl: '', seoTitle: '', seoDescription: '' };
 const blankSource: SourceDraft = { provider: 'voe', externalVideoId: '', kind: 'embed', url: '', status: 'processing' };
 const slugify = (value: string) => value.toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 180);
 
@@ -32,6 +33,28 @@ async function api(path: string, init?: RequestInit) {
   return result;
 }
 
+function uploadToProviders(file: File, metadata: Record<string, unknown>, onProgress: (percent: number) => void) {
+  return new Promise<{ results: UploadResult[] }>((resolve, reject) => {
+    const request = new XMLHttpRequest();
+    request.open('POST', '/api/dude-admin/proxy/uploads');
+    request.timeout = 7_200_000;
+    request.setRequestHeader('Content-Type', 'application/octet-stream');
+    request.setRequestHeader('X-Upload-Metadata', JSON.stringify({ videoId: metadata.videoId, providers: metadata.providers }));
+    request.setRequestHeader('X-Upload-Filename', file.name);
+    request.upload.onprogress = event => { if (event.lengthComputable) onProgress(Math.round(event.loaded / event.total * 100)); };
+    request.onerror = () => reject(new Error('Upload connection failed; provider acceptance is unknown. Check dashboards before retrying to avoid duplicates.'));
+    request.ontimeout = () => reject(new Error('Upload timed out; provider acceptance is unknown. Check dashboards before retrying to avoid duplicates.'));
+    request.onload = () => {
+      try {
+        const data = JSON.parse(request.responseText || '{}');
+        if (request.status < 200 || request.status >= 300) reject(new Error(data.error || `Upload failed (${request.status})`));
+        else resolve(data);
+      } catch { reject(new Error('Upload server returned an invalid response')); }
+    };
+    request.send(file);
+  });
+}
+
 export default function DudeAdminPanel() {
   const [authenticated, setAuthenticated] = useState<boolean | null>(null);
   const [configured, setConfigured] = useState(true);
@@ -42,6 +65,13 @@ export default function DudeAdminPanel() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [videoDraft, setVideoDraft] = useState<VideoDraft>(blankVideo);
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [draftVideoId, setDraftVideoId] = useState<string | null>(null);
+  const [uploadAttempted, setUploadAttempted] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const [uploadedVideo, setUploadedVideo] = useState<{ id: string; title: string } | null>(null);
+  const [uploadResults, setUploadResults] = useState<UploadResult[]>([]);
+  const [thumbnailChoice, setThumbnailChoice] = useState('');
   const [sourceDraft, setSourceDraft] = useState<SourceDraft>(blankSource);
   const [categoryDraft, setCategoryDraft] = useState({ name: '', slug: '', contentRating: 'general', description: '', seoTitle: '', seoDescription: '', status: 'draft' });
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
@@ -98,23 +128,54 @@ export default function DudeAdminPanel() {
   }
 
   async function createVideo(event: FormEvent) {
-    event.preventDefault(); setBusy(true); setError(''); setNotice('');
+    event.preventDefault(); if (!uploadFile || !videoDraft.providers.length) return;
+    if (uploadAttempted && !window.confirm('The previous upload response was unclear. Check provider dashboards before retrying; duplicate uploads are possible. Retry anyway?')) return;
+    let videoId = draftVideoId;
+    setBusy(true); setError(''); setNotice('');
     try {
-      const data = await api('videos', { method: 'POST', body: JSON.stringify({
-        slug: videoDraft.slug || slugify(videoDraft.title), title: videoDraft.title, h1: videoDraft.title,
-        description: videoDraft.description, bodyText: videoDraft.description, contentRating: videoDraft.contentRating,
-        categories: videoDraft.categories, tags: videoDraft.tags,
-        ...(videoDraft.uploadDate ? { uploadDate: new Date(`${videoDraft.uploadDate}T12:00:00.000Z`).toISOString() } : {}),
-        ...(videoDraft.thumbnailUrl ? { thumbnail: { url: videoDraft.thumbnailUrl, alt: videoDraft.title } } : {}),
-        seo: { title: videoDraft.seoTitle || videoDraft.title, metaDescription: videoDraft.seoDescription || videoDraft.description, indexAllowed: true },
-        status: 'draft', language: 'en',
-      }) });
-      setNotice('Draft created. Add a provider source below, then publish when it is verified and the required details are complete.');
-      setSourceDraft({ ...blankSource, provider: videoDraft.provider });
-      setVideoDraft(blankVideo); await loadCatalog();
-      const created = data.video;
-      if (created?._id) { setTab('Videos'); await openVideo(created._id); }
-    } catch (e) { setError(e instanceof Error ? e.message : 'Could not create draft'); }
+      if (!videoId) {
+        const data = await api('videos', { method: 'POST', body: JSON.stringify({
+          slug: videoDraft.slug || slugify(videoDraft.title), title: videoDraft.title, h1: videoDraft.title,
+          description: videoDraft.description, bodyText: videoDraft.description, contentRating: videoDraft.contentRating,
+          categories: videoDraft.categories, tags: videoDraft.tags,
+          ...(videoDraft.uploadDate ? { uploadDate: new Date(`${videoDraft.uploadDate}T12:00:00.000Z`).toISOString() } : {}),
+          ...(videoDraft.thumbnailUrl ? { thumbnail: { url: videoDraft.thumbnailUrl, alt: videoDraft.title } } : {}),
+          seo: { title: videoDraft.seoTitle || videoDraft.title, metaDescription: videoDraft.seoDescription || videoDraft.description, indexAllowed: true },
+          status: 'draft', language: 'en',
+        }) });
+        videoId = data.video?._id;
+        if (!videoId) throw new Error('Draft was created, but no video ID was returned');
+        setDraftVideoId(videoId);
+      }
+      setNotice('Uploading video to selected providers…'); setUploadProgress(0);
+      setUploadAttempted(true);
+      const upload = await uploadToProviders(uploadFile, { videoId, providers: videoDraft.providers }, setUploadProgress);
+      setUploadResults(upload.results || []);
+      setUploadedVideo({ id: videoId, title: videoDraft.title });
+      for (const [index, result] of upload.results.entries()) {
+        if (!result.code) continue;
+        await api(`videos/${videoId}/sources`, { method: 'POST', body: JSON.stringify({ provider: result.provider,
+          externalVideoId: result.code, kind: 'embed', ...(result.embedUrl ? { embedUrl: result.embedUrl } : {}),
+          enabled: true, priority: index * 10 + 10, status: 'processing', availability: 'unknown' }) });
+      }
+      const posters = upload.results.filter((result: UploadResult) => result.thumbnailUrl).map((result: UploadResult) => result.thumbnailUrl!);
+      const initialThumbnail = videoDraft.thumbnailUrl || posters[0] || '';
+      setThumbnailChoice(initialThumbnail);
+      if (initialThumbnail) await api(`videos/${videoId}`, { method: 'PATCH', body: JSON.stringify({ thumbnail: { url: initialThumbnail, alt: videoDraft.title } }) });
+      setNotice('Upload finished. Choose a thumbnail, then continue to verify sources and publish.'); await loadCatalog();
+    } catch (e) { setError(`${e instanceof Error ? e.message : 'Could not create draft'}${videoId ? ' Check provider dashboards before retrying; duplicate uploads may result.' : ''}`); }
+    finally { setBusy(false); setUploadProgress(null); }
+  }
+
+  async function finishUpload() {
+    if (!uploadedVideo) return;
+    setBusy(true); setError('');
+    try {
+      if (!thumbnailChoice) throw new Error('Choose or enter a thumbnail URL before continuing');
+      await api(`videos/${uploadedVideo.id}`, { method: 'PATCH', body: JSON.stringify({ thumbnail: { url: thumbnailChoice, alt: uploadedVideo.title } }) });
+      setTab('Videos'); await loadCatalog(); await openVideo(uploadedVideo.id);
+      setUploadedVideo(null); setDraftVideoId(null); setUploadAttempted(false); setUploadFile(null); setUploadResults([]); setVideoDraft(blankVideo);
+    } catch (e) { setError(e instanceof Error ? e.message : 'Could not save the thumbnail'); }
     finally { setBusy(false); }
   }
 
@@ -247,7 +308,7 @@ export default function DudeAdminPanel() {
             </section>
             <section className={`${styles.panel} ${styles.workflowPanel}`}><div className={styles.workflowIcon}><Gauge size={20} /></div><p className={styles.eyebrow}>PUBLISHING WORKFLOW</p><h2>From draft to live.</h2><p className={styles.workflowText}>Create a draft, attach a provider player, verify playback, then publish. The backend checks category, metadata, and provider rules before it goes live.</p><div className={styles.workflowSteps}><span><i>1</i> Details</span><ArrowRight size={14} /><span><i>2</i> Source</span><ArrowRight size={14} /><span><i>3</i> Publish</span></div><button className={styles.secondaryButton} onClick={() => setTab('Add video')}>Start with a video <ArrowRight size={16} /></button></section>
           </div>
-          <div className={styles.infoStrip}><CircleHelp size={17} /><p><b>Provider uploads run separately.</b> This panel manages catalog records and verified provider embeds. Use the private upload worker/CLI for media transfer; it is not exposed by the deployed API yet.</p></div>
+          <div className={styles.infoStrip}><CircleHelp size={17} /><p><b>Upload from the panel.</b> Provider uploads run on the secured API server. Each source still needs a playback check before publishing.</p></div>
         </>}
         {tab === 'Videos' && <>
           <div className={styles.pageHeading}><div><p className={styles.eyebrow}>CATALOG MANAGEMENT</p><h1>Your videos</h1><p className={styles.subheading}>Review records, providers, and publishing status.</p></div><button className={styles.primaryButton} onClick={() => { setTab('Add video'); setSelected(null); }}><Plus size={17} /> New video</button></div>
@@ -255,14 +316,28 @@ export default function DudeAdminPanel() {
           {selected && <VideoDetail video={selected} categories={categories} busy={busy} sourceDraft={sourceDraft} setSourceDraft={setSourceDraft} onClose={() => setSelected(null)} onAddSource={addSource} onSourceStatus={updateSource} onVideoStatus={changeVideoStatus} onSave={saveVideoDetails} />}
         </>}
         {tab === 'Add video' && <>
-          <div className={styles.pageHeading}><div><p className={styles.eyebrow}>NEW CATALOG ENTRY</p><h1>Add a video</h1><p className={styles.subheading}>Start with accurate details. You can save as a draft and finish later.</p></div><span className={styles.stepPill}><span>01</span> Video details</span></div>
-          <form className={styles.editorGrid} onSubmit={createVideo}>
+          <div className={styles.pageHeading}><div><p className={styles.eyebrow}>NEW CATALOG ENTRY</p><h1>Add a video</h1><p className={styles.subheading}>Choose the file, providers, and catalog details before uploading.</p></div><span className={styles.stepPill}><span>{uploadedVideo ? '03' : '01'}</span> {uploadedVideo ? 'Thumbnail' : 'Details & upload'}</span></div>
+          {uploadedVideo ? <section className={styles.panel}>
+            <div className={styles.sectionTitle}><div className={`${styles.sectionIcon} ${styles.pinkIcon}`}><Upload size={18} /></div><div><h2>Upload results & thumbnail</h2><p>Choose a provider poster or enter an HTTPS image URL</p></div></div>
+            <div className={styles.categoryChoices}>{uploadResults.map(result => <span className={styles.checkChoice} key={result.provider}>{result.provider}: {result.code ? `uploaded (${result.status || 'processing'})` : result.error || 'failed'}</span>)}</div>
+            <div className={styles.thumbnailChoices}>{uploadResults.filter(result => result.thumbnailUrl).map(result => <label className={styles.thumbnailChoice} key={result.provider}>
+              <input type="radio" name="thumbnail" checked={thumbnailChoice === result.thumbnailUrl} onChange={() => setThumbnailChoice(result.thumbnailUrl!)} />
+              <img src={result.thumbnailUrl} alt={`${result.provider} thumbnail`} /><span>{result.provider}</span>
+            </label>)}</div>
+            <div className={styles.fieldGap}><Field label="Thumbnail URL" required><input required type="url" value={thumbnailChoice} onChange={e => setThumbnailChoice(e.target.value)} placeholder="https://…" /></Field></div>
+            <button type="button" className={`${styles.primaryButton} ${styles.fullButton}`} disabled={busy || !thumbnailChoice} onClick={() => void finishUpload()}>
+              {busy ? <RefreshCw className={styles.spin} size={15} /> : <ArrowRight size={15} />} Save thumbnail and verify sources
+            </button>
+            <p className={styles.formFootnote}>Successful uploads are saved as sources in this draft. Check each provider player before marking it ready; publishing remains a separate step.</p>
+          </section> : <form className={styles.editorGrid} onSubmit={createVideo}>
+            <fieldset className={styles.uploadFields} disabled={busy || !!draftVideoId}>
             <section className={styles.panel}><div className={styles.sectionTitle}><div className={styles.sectionIcon}><Film size={18} /></div><div><h2>Video details</h2><p>How it appears in your catalog</p></div></div>
+              <div className={styles.fieldGap}><Field label="Video file" required hint="MP4, up to 5 GB"><input required type="file" accept="video/mp4,.mp4" onChange={e => setUploadFile(e.target.files?.[0] || null)} /></Field></div>
               <div className={styles.formGrid}><Field label="Video title" required><input required maxLength={300} value={videoDraft.title} onChange={e => setVideoDraft({ ...videoDraft, title: e.target.value, slug: videoDraft.slug ? videoDraft.slug : slugify(e.target.value), seoTitle: videoDraft.seoTitle || e.target.value })} placeholder="Enter a clear, accurate title" /></Field>
                 <Field label="Slug" hint="URL path; can be edited before save"><input required maxLength={180} pattern="[a-z0-9]+(-[a-z0-9]+)*" value={videoDraft.slug} onChange={e => setVideoDraft({ ...videoDraft, slug: slugify(e.target.value) })} placeholder="video-title" /></Field>
-                <Field label="Upload provider" required><select value={videoDraft.provider} onChange={e => setVideoDraft({ ...videoDraft, provider: e.target.value })}><option value="voe">VOE</option><option value="playmate">Playmate</option><option value="vidara">Vidara</option><option value="lulustream">LuluStream</option></select></Field>
+                <Field label="Upload providers" wide required><div className={styles.categoryChoices}>{['voe', 'playmate', 'vidara', 'lulustream'].map(provider => <label className={styles.checkChoice} key={provider}><input type="checkbox" checked={videoDraft.providers.includes(provider)} onChange={e => setVideoDraft({ ...videoDraft, providers: e.target.checked ? [...videoDraft.providers, provider] : videoDraft.providers.filter(value => value !== provider) })} /><span>{provider}</span></label>)}</div></Field>
                 <Field label="Content rating" required><select value={videoDraft.contentRating} onChange={e => setVideoDraft({ ...videoDraft, contentRating: e.target.value as VideoDraft['contentRating'], categories: [] })}><option value="general">General</option><option value="adult">Adult</option></select></Field>
-                <Field label="Original upload date" hint="Use the actual first publication date"><input type="date" value={videoDraft.uploadDate} onChange={e => setVideoDraft({ ...videoDraft, uploadDate: e.target.value })} /></Field>
+                <Field label="Original upload date" required hint="Use the actual first publication date"><input required type="date" value={videoDraft.uploadDate} onChange={e => setVideoDraft({ ...videoDraft, uploadDate: e.target.value })} /></Field>
                 <Field label="Description" wide required><textarea required maxLength={5000} rows={4} value={videoDraft.description} onChange={e => setVideoDraft({ ...videoDraft, description: e.target.value, seoDescription: videoDraft.seoDescription || e.target.value })} placeholder="Write an accurate summary for viewers." /></Field>
                 <Field label="Categories" wide hint="Only active categories with the same rating can be published"><div className={styles.categoryChoices}>{activeCategories.length ? activeCategories.map(category => <label className={styles.checkChoice} key={category._id}><input type="checkbox" checked={videoDraft.categories.includes(category.slug)} onChange={e => setVideoDraft({ ...videoDraft, categories: e.target.checked ? [...videoDraft.categories, category.slug] : videoDraft.categories.filter(slug => slug !== category.slug) })} /><span>{category.name}</span></label>) : <span className={styles.emptyHint}>No active {videoDraft.contentRating} categories yet. Add one in Categories.</span>}</div></Field>
                 <Field label="Tags" wide hint="Choose from tags already used in the catalog"><div className={styles.categoryChoices}>{availableTags.length ? availableTags.map(tag => <label className={styles.checkChoice} key={tag}><input type="checkbox" checked={videoDraft.tags.includes(tag)} onChange={e => setVideoDraft({ ...videoDraft, tags: e.target.checked ? [...videoDraft.tags, tag] : videoDraft.tags.filter(value => value !== tag) })} /><span>{tag}</span></label>) : <span className={styles.emptyHint}>No tags in the loaded catalog yet.</span>}</div></Field>
@@ -275,9 +350,11 @@ export default function DudeAdminPanel() {
                 <div className={styles.fieldGap}><Field label="SEO description"><textarea rows={3} maxLength={1000} value={videoDraft.seoDescription} onChange={e => setVideoDraft({ ...videoDraft, seoDescription: e.target.value })} placeholder="Short search description" /></Field></div>
               </section>
               <section className={`${styles.panel} ${styles.reviewNote}`}><ShieldCheck size={18} /><div><b>Saved as a draft</b><p>Nothing is public until you attach a verified provider source and choose Publish.</p></div></section>
-              <button className={styles.primaryButton} disabled={busy || !videoDraft.title || !videoDraft.description}>{busy ? 'Saving…' : 'Create draft'} <ArrowRight size={16} /></button>
+            </fieldset>
+              {uploadProgress !== null && <div className={styles.uploadProgress} role="status"><span>Uploading… {uploadProgress}%</span><progress max="100" value={uploadProgress} /></div>}
+              <button className={styles.primaryButton} disabled={busy || !uploadFile || !videoDraft.providers.length || !videoDraft.categories.length || !videoDraft.title || !videoDraft.description}>{busy ? <><RefreshCw size={15} className={styles.spin} /> {uploadProgress === null ? 'Preparing…' : `Uploading ${uploadProgress}%`}</> : draftVideoId ? 'Retry upload' : 'Create draft & upload'} <ArrowRight size={16} /></button>
             </aside>
-          </form>
+          </form>}
         </>}
         {tab === 'Categories' && <>
           <div className={styles.pageHeading}><div><p className={styles.eyebrow}>CATALOG TAXONOMY</p><h1>Categories</h1><p className={styles.subheading}>Keep categories consistent with each video's content rating.</p></div><span className={styles.stepPill}>{categories.length} categories</span></div>

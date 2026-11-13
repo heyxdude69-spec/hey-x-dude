@@ -9,7 +9,7 @@ try { await cache.connect(); } catch (error) { await database.connection.close()
 const server = createApp({ database, cache, config }).listen(config.port, config.host, () => {
   console.log(JSON.stringify({ event: 'listening', host: config.host, port: config.port, cache: cache.mode }));
 });
-server.requestTimeout = 15000; server.headersTimeout = 10000; server.keepAliveTimeout = 5000; server.maxConnections = 2000;
+server.requestTimeout = 2 * 60 * 60 * 1000; server.headersTimeout = 10000; server.keepAliveTimeout = 5000; server.maxConnections = 2000;
 async function stop() {
   const deadline = setTimeout(() => process.exit(1), 10000); deadline.unref();
   server.close(async () => { await Promise.allSettled([cache.close(), database.connection.close()]); clearTimeout(deadline); process.exit(0); });
