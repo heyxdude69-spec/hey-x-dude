@@ -150,16 +150,18 @@ export default function DudeAdminPanel() {
       setNotice('Uploading video to selected providers…'); setUploadProgress(0);
       setUploadAttempted(true);
       const upload = await uploadToProviders(uploadFile, { videoId, providers: videoDraft.providers }, setUploadProgress);
-      setUploadResults(upload.results || []);
+      const results = (upload.results || []).map((result: UploadResult) => result.provider === 'voe' && result.code
+        ? { ...result, thumbnailUrl: `https://i.voe.sx/cache/${result.code}_storyboard_L3.jpg` } : result);
+      setUploadResults(results);
       setUploadedVideo({ id: videoId, title: videoDraft.title });
-      for (const [index, result] of upload.results.entries()) {
+      for (const [index, result] of results.entries()) {
         if (!result.code) continue;
         await api(`videos/${videoId}/sources`, { method: 'POST', body: JSON.stringify({ provider: result.provider,
           externalVideoId: result.code, kind: 'embed', ...(result.embedUrl ? { embedUrl: result.embedUrl } : {}),
           enabled: true, priority: index * 10 + 10, status: 'processing', availability: 'unknown' }) });
       }
-      const posters = upload.results.filter((result: UploadResult) => result.thumbnailUrl).map((result: UploadResult) => result.thumbnailUrl!);
-      const initialThumbnail = videoDraft.thumbnailUrl || posters[0] || '';
+      const posters = results.filter((result: UploadResult) => result.thumbnailUrl).map((result: UploadResult) => result.thumbnailUrl!);
+      const initialThumbnail = results.find((result: UploadResult) => result.provider === 'voe' && result.thumbnailUrl)?.thumbnailUrl || videoDraft.thumbnailUrl || posters[0] || '';
       setThumbnailChoice(initialThumbnail);
       if (initialThumbnail) await api(`videos/${videoId}`, { method: 'PATCH', body: JSON.stringify({ thumbnail: { url: initialThumbnail, alt: videoDraft.title } }) });
       setNotice('Upload finished. Choose a thumbnail, then continue to verify sources and publish.'); await loadCatalog();
